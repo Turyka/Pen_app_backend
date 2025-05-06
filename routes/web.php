@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\HirController;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log;
 
 
 /*
@@ -22,5 +23,10 @@ use Illuminate\Validation\Rule;
 
 Route::get('/hirek', [HirController::class, 'index']);
 Route::get('/hirek/scrape', [HirController::class, 'scrape']); // optional manual trigger
+
+Route::get('/ping', function () {
+    Log::info('Pinged at: ' . now()); // Optional: logs each ping
+    return response('pong', 200);
+});
 
 
