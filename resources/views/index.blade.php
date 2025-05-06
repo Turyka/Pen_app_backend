@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Hírek</title>
 </head>
+
 <body>
     <h1>Hírek</h1>
-
+    @php
+        dd($hirek);
+    @endphp
     @foreach ($hirek as $hir)
         <div style="margin-bottom: 20px;">
             <h2>{{ $hir->title }}</h2>
@@ -16,4 +20,5 @@
         </div>
     @endforeach
 </body>
+
 </html>
