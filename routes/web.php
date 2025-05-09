@@ -3,29 +3,23 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\HirController;
+use App\Http\Controllers\NaptarController;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
 
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
-*/
-//napelem projecthez
-//Route::get('/register', [UserController::class,'create']);
-//Route::post('/users', [UserController::class,'store']);
-
+//HIREK
 Route::get('/hirek', [HirController::class, 'index']);
 Route::get('/hirek/scrape', [HirController::class, 'scrape']); // optional manual trigger
 
+//NAPTÁR
+Route::get('/naptar', [NaptarController::class, 'index']);
+Route::post('/naptar/store', [NaptarController::class, 'store'])->name('events.store');
+
+
+
 Route::get('/ping', function () {
-    Log::info('Pinged at: ' . now()); // Optional: logs each ping
+    Log::info('Pinged at: ' . now());
     return response('pong', 200);
 });
 

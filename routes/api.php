@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\HirController;
+use App\Http\Controllers\NaptarController;
 use Illuminate\Http\Request;
 
     //Route::get('/felhasznalo', [UserController::class, 'getUsers']);
@@ -10,6 +11,10 @@ use Illuminate\Http\Request;
     //Route::post('/login', [UserController::class, 'bejelentkezes']);
 
     Route::get('/hirekAPI', [HirController::class, 'apiIndex']);
+
+
+
+    Route::get('/naptarAPI', [NaptarController::class, 'NaptarAPI']);
 
 
     /*
