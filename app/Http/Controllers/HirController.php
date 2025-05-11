@@ -30,7 +30,7 @@ class HirController extends Controller
     {
         $perPage = $request->get('per_page', 5);
 
-        $hirek = Hir::orderBy('id', 'desc')->paginate($perPage);
+        $hirek = Hir::orderBy('id', 'asc')->paginate($perPage);
 
         return response()->json($hirek);
     }
