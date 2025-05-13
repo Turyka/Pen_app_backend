@@ -15,7 +15,7 @@ class HirController extends Controller
     {
         Artisan::call('scrape:hirek');
 
-        return response()->json(['message' => 'Scraping triggered.']);
+        return response()->json(['message' => 'Sikeres lekérés']);
     }
 
     // Show saved news

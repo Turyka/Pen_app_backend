@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 
 //HIREK
 Route::get('/hirek', [HirController::class, 'index']);
-Route::get('/hirek/scrape', [HirController::class, 'scrape']); // optional manual trigger
+Route::get('/hirek/scrape', [HirController::class, 'scrape']);
 
 //NAPTÁR
 Route::get('/naptar', [NaptarController::class, 'index']);

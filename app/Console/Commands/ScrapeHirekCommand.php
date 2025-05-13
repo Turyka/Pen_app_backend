@@ -18,7 +18,7 @@ class ScrapeHirekCommand extends Command
         $response = Http::get('https://pen.uni-pannon.hu/hirek/');
 
         if (!$response->successful()) {
-            $this->error('Failed to fetch news');
+            $this->error('Sikerrtelen lehuzás');
             return Command::FAILURE;
         }
 
@@ -39,9 +39,29 @@ class ScrapeHirekCommand extends Command
             $imgNode = $xpath->query(".//img", $card);
             $image = $imgNode->length ? $imgNode[0]->getAttribute('data-dpt-src') : '';
 
-            if (!$title || !$link || Hir::where('link', $link)->exists()) {
+            
+            
+            $mar_van = Hir::where('title', $title)->first();
+
+            if ($mar_van) {
+                // If image is the same, skip
+                if ($mar_van->image === $image) {
+                    continue;
+                }
+        
+                // If image is different, update it
+                $mar_van->update([
+                    'image' => $image,
+                ]);
+        
+                $this->info("kép updatelve $image");
                 continue;
             }
+
+            if (Hir::where('link', $link)->exists()) {
+                continue;
+            }
+
 
             Hir::create([
                 'title' => $title,
