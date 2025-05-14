@@ -35,5 +35,12 @@ class HirController extends Controller
         return response()->json($hirek);
     }
 
+    public function torol()
+    {
+        Hir::truncate();
+
+        return redirect('/hirek');
+    }
+
 }
 

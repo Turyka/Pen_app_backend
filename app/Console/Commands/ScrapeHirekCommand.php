@@ -31,8 +31,9 @@ class ScrapeHirekCommand extends Command
 
         $cards = $xpath->query("//div[contains(@class, 'dpt-entry')]");
         $added = 0;
-
-        foreach ($cards as $card) {
+        $cardsArray = iterator_to_array($cards);
+        $cardsArray = array_reverse($cardsArray);
+        foreach ($cardsArray as $card) {
             $titleNode = $xpath->query(".//h3[contains(@class, 'dpt-title')]/a", $card);
             $title = $titleNode->length ? trim($titleNode[0]->nodeValue) : '';
             $link = $titleNode->length ? $titleNode[0]->getAttribute('href') : '';
