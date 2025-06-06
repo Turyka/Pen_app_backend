@@ -14,41 +14,24 @@ class HirController extends Controller
 {
 
     public function seedDatabase()
-{
-    // Ensure it's only run in local environment
-
-    $output = new BufferedOutput();
-
-    // Run migration
-    $migrateStatus = Artisan::call('migrate:refresh', ['--force' => true], $output);
-    $migrateOutput = $output->fetch();
-
-
-    // Run seeding
-    $seedStatus = Artisan::call('db:seed', [], $output);
-    $seedOutput = $output->fetch();
-
-    // Log outputs (optional)
-    Log::info('Migration Output: ' . $migrateOutput);
-    Log::info('Seeding Output: ' . $seedOutput);
-
-    // Check both status codes
-    if ($migrateStatus === 0 && $seedStatus === 0) {
-        return response()->json([
-            'message' => 'Database refreshed and seeded successfully.',
-            'migrate_output' => $migrateOutput,
-            'seed_output' => $seedOutput
-        ]);
+    {
+        try {
+            $migrateOutput = Artisan::call('migrate:refresh', ['--force' => true]);
+            $seedOutput = Artisan::call('db:seed', ['--force' => true]);
+    
+            return response()->json([
+                'message' => 'Database refreshed and seeded successfully.',
+                'migrate_status' => $migrateOutput,
+                'seed_status' => $seedOutput,
+                'migrate_output' => Artisan::output(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred during migration or seeding.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
-
-    return response()->json([
-        'message' => 'An error occurred during migration or seeding.',
-        'migrate_status' => $migrateStatus,
-        'seed_status' => $seedStatus,
-        'migrate_output' => $migrateOutput,
-        'seed_output' => $seedOutput
-    ], 500);
-}
     
     public function scrape()
     {
