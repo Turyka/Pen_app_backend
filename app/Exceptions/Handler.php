@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Exceptions;
-
+use Illuminate\Auth\AuthenticationException;
 use Throwable;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 
@@ -15,7 +15,11 @@ class Handler extends ExceptionHandler
     protected $dontReport = [
         //
     ];
-
+    protected function unauthenticated($request, AuthenticationException $exception)
+    {
+    return redirect()->guest(route('login')); // vagy redirect('/')
+    }
+    
     /**
      * A list of the inputs that are never flashed for validation exceptions.
      *

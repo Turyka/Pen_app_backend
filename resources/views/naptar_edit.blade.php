@@ -3,7 +3,7 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>Esemény létrehozása</title>
+    <title>{{ $naptar->title}} - Szerkesztése</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -127,11 +127,12 @@ select:focus {
             customTypeContainer.style.display = 'none';
         }
     });
+
 </script>
 </head>
 <body>
     <div class="container">
-        <h1>Új esemény létrehozása</h1>
+        <h1>"{{ $naptar->title}}" - Szerkesztése</h1>
 
         @if ($errors->any())
             <div class="error">
@@ -143,28 +144,31 @@ select:focus {
             </div>
         @endif
 
-        <form action="{{ route('events.store') }}" method="POST">
+        <form action="{{ isset($naptar) ? route('naptar.update', $naptar->id) : route('events.store') }}" method="POST">
             @csrf
+            @if(isset($naptar))
+                @method('PUT')
+            @endif
 
             <label for="title">Cím</label>
-            <input type="text" name="title" id="title" placeholder="Milyen esemény..." required>
+            <input type="text" name="title" id="title" value="{{ old('title', $naptar->title ?? '') }}" placeholder="Milyen esemény..." required>
 
             <label for="date">Dátum</label>
-            <input type="date" name="date" id="date" required min="{{ date('Y-m-d') }}">
+            <input type="date" name="date" id="date" value="{{ old('date', $naptar->date ?? '') }}" required min="{{ date('Y-m-d') }}">
 
             <div class="time-group">
                 <div style="flex: 1;">
                     <label for="start_time">Kezdés</label>
-                    <input type="time" name="start_time" id="start_time" required>
+                    <input type="time" name="start_time" id="start_time" value="{{ old('start_time', isset($naptar) ? \Carbon\Carbon::createFromFormat('H:i:s', $naptar->start_time)->format('H:i') : '') }}" required>
                 </div>
                 <div style="flex: 1;">
                     <label for="end_time">Befejezés</label>
-                    <input type="time" name="end_time" id="end_time" required>
+                    <input type="time" name="end_time" id="end_time" value="{{ old('end_time', isset($naptar) ? \Carbon\Carbon::createFromFormat('H:i:s', $naptar->end_time)->format('H:i') : '') }}" required>
                 </div>
             </div>
            <label for="event_type">Esemény típusa</label>
-            <select name="event_type" id="event_type" required>
-                <option value="" disabled selected>Válassz eseménytípust</option>
+            <select name="event_type" id="event_type"   required>
+                <option value="{{ old('event_type', $naptar->event_type ?? '') }}" selected>{{ $naptar->event_type}}</option>
                 <option value="Sorpong">Sőrpong</option>
                 <option value="Kvizest">Kvízest</option>
                 <option value="Kocsmatura">Kocsmatura</option>
@@ -176,8 +180,17 @@ select:focus {
                 <option value="egyebb">Egyéb</option>
             </select>
 
+            <label for="status">Státusz:</label>
+            <select name="status" id="status"   required>
+                <option value="{{ old('status', $naptar->status ?? '') }}" selected>{{ $naptar->status}}</option>
+                <option value="Aktív">Aktív</option>
+                <option value="Függőben">Függőben</option>
+                <option value="Törölve">Törölve</option>
+                <option value="Lezárt">Lezárt</option>
+            </select>
+
             <label for="description">Leírás</label>
-            <textarea name="description" placeholder="Pl: B épület, előadó, vagy Plakát kocsma (helyszin)" id="description" rows="4"></textarea>
+            <textarea name="description"  id="description" rows="4">{{ old('description', $naptar->description ?? '') }}</textarea>
 
             <button type="submit">Mentés</button>
         </form>

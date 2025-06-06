@@ -11,17 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('naptar', function (Blueprint $table) {
+        Schema::create('postok', function (Blueprint $table) {
             $table->id();
             $table->string('title');
-            $table->date('date');
-            $table->time('start_time');
-            $table->time('end_time');
-            $table->string('event_type');
-            $table->string('status');
-            $table->string('created');
-            $table->string('edited')->nullable();
-            $table->text('description')->nullable();
+            $table->text('description');
+            $table->string('url')->nullable();
             $table->timestamps();
         });
     }
@@ -31,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('naptar');
+        Schema::dropIfExists('postok');
     }
 };

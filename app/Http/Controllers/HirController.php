@@ -19,7 +19,7 @@ class HirController extends Controller
     }
 
     // Show saved news
-    public function index()
+    public function index(Request $request)
     {
         $hirek = \App\Models\Hir::latest()->get();
 
