@@ -8,7 +8,7 @@ class Eszkozok extends Model
 {
     protected $table = 'adat_eszkozok';
     protected $fillable = [
-        'uuid',
+        'device_id',
         'device',
         'os',
         'app_version',

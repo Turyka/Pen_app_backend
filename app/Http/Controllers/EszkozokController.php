@@ -22,7 +22,7 @@ class EszkozokController extends Controller
         ]);
 
         Eszkozok::updateOrCreate(
-            ['uuid' => $validated['id']],
+            ['device_id' => $validated['id']], // or 'uuid' if your table uses that
             [
                 'device' => $validated['device'],
                 'os' => $validated['os'],

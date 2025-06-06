@@ -19,7 +19,7 @@ use Illuminate\Http\Request;
 
 
     // eszkozok
-    Route::post('/eszkozok', [EszkozokController::class, 'report']);
+    Route::post('/eszkozok', [EszkozokController::class, 'store']);
 
     /*
     Route::middleware(['auth:sanctum'])->group(function () {

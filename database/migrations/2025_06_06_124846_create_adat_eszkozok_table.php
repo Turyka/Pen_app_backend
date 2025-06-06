@@ -13,10 +13,10 @@ return new class extends Migration
 {
     Schema::create('adat_eszkozok', function (Blueprint $table) {
         $table->id();
-        $table->uuid('uuid')->unique();
-        $table->string('device')->nullable();
-        $table->string('os')->nullable();
-        $table->string('app_version')->nullable();
+        $table->string('device_id')->unique(); // <- This matches 'id' from Flutter
+        $table->string('device');
+        $table->string('os');
+        $table->string('app_version');
         $table->timestamps();
     });
 }
