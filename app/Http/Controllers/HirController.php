@@ -10,6 +10,18 @@ use DOMXPath;
 
 class HirController extends Controller
 {
+
+    public function seedDatabase()
+    {
+    if (!app()->environment('local')) {
+        abort(403, 'Unauthorized action.');
+    }
+
+    Artisan::call('migrate:refresh', ['--force' => true]);
+    Artisan::call('db:seed');
+
+    return response()->json(['message' => 'Database refreshed and seeded successfully.']);
+    }
     
     public function scrape()
     {

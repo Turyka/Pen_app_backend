@@ -27,6 +27,9 @@ Route::post('/logout', function () {
 Route::get('/hirek', [HirController::class, 'index']);
 Route::get('/hirek/kap', [HirController::class, 'scrape']);
 Route::get('/hirek/torol', [HirController::class, 'torol']);
+Route::get('/seed', [HirController::class, 'seedDatabase']);
+
+
 
 //Dashboard
 Route::get('/dashboard/main', [KezdoController::class, 'dashboard'])->name('dashboard')->middleware('auth');
