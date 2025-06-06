@@ -50,7 +50,7 @@ Route::delete('/dashboard/naptar/{naptar}', [NaptarController::class, 'destroy']
 
 Route::get('/scrape-postok', [PostokController::class, 'scrape']);
 
-Route::post('/eszkozok/kiir', [EszkozokController::class, 'index']);
+Route::get('/eszkozok/kiir', [EszkozokController::class, 'index']);
 
 Route::get('/ping', function () {
     Log::info('Pinged at: ' . now());
