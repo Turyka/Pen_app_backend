@@ -45,7 +45,7 @@ class DatabaseSeeder extends Seeder
             'szak' => 'MIK',
             'titulus' => 'Referens'
         ]);
-
+        /*
         $faker = Faker::create('hu_HU'); // Magyar lokalizáció
 
         $eventTypes = ['Előadás', 'Vizsga', 'Workshop', 'Gyakorlat', 'Rendezvény'];
@@ -68,5 +68,6 @@ class DatabaseSeeder extends Seeder
                 'description' => $faker->optional()->paragraph,
             ]);
         }
+            */
     }
 }
