@@ -13,9 +13,7 @@ class HirController extends Controller
 
     public function seedDatabase()
     {
-    if (!app()->environment('local')) {
-        abort(403, 'Unauthorized action.');
-    }
+
 
     Artisan::call('migrate:refresh', ['--force' => true]);
     Artisan::call('db:seed');
