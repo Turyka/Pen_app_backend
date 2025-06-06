@@ -12,24 +12,25 @@ class EszkozokController extends Controller
     return view('eszkozok', compact('devices'));
     }
 
-    public function report(Request $request)
-    {
-        $validated = $request->validate([
-            'id' => 'required|uuid',
-            'device' => 'nullable|string',
-            'os' => 'nullable|string',
-            'appVersion' => 'nullable|string',
-        ]);
+    public function store(Request $request)
+{
+    $validated = $request->validate([
+        'id' => 'required|string',
+        'device' => 'nullable|string',
+        'os' => 'nullable|string',
+        'appVersion' => 'nullable|string',
+    ]);
 
-        Eszkozok::updateOrCreate(
-            ['device_id' => $validated['id']],
-            [
-                'device' => $validated['device'],
-                'os' => $validated['os'],
-                'app_version' => $validated['appVersion'],
-            ]
-        );
+    Eszkozok::updateOrCreate(
+        ['device_id' => $validated['id']],
+        [
+            'device' => $validated['device'],
+            'os' => $validated['os'],
+            'app_version' => $validated['appVersion'],
+            'ip' => $request->ip(),
+        ]
+    );
 
-        return response()->json(['message' => 'Usage logged']);
-    }
+    return response()->json(['message' => 'OK']);
+}
 }
