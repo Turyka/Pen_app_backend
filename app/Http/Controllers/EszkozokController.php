@@ -8,8 +8,8 @@ class EszkozokController extends Controller
 {
     public function index()
     {
-        $devices = Eszkozok::table('adat_eszkozok')->orderBy('created_at', 'desc')->get();
-        return view('eszkozok', compact('devices'));
+        $devices = Eszkozok::orderBy('created_at', 'desc')->get();
+    return view('eszkozok', compact('devices'));
     }
 
     public function report(Request $request)
