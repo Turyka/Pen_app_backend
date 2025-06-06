@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Eszkozok;
 use Illuminate\Http\Request;
 use App\Models\Naptar;
 use Illuminate\Support\Facades\Auth;
@@ -39,7 +40,8 @@ class KezdoController extends Controller
     {
     $users = User::latest()->paginate(10); 
     $naptar_szamok = Naptar::count();
-    return view('dashboard.index', compact('users','naptar_szamok'));
+    $eszkozok_szamok = Eszkozok::count();
+    return view('dashboard.index', compact('users','naptar_szamok','eszkozok_szamok'));
     }
 
     public function naptar()
