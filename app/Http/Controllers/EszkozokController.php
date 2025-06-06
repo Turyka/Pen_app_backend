@@ -16,17 +16,17 @@ class EszkozokController extends Controller
     {
         try {
             Eszkozok::create([
-                'device_id' => $request->input('id'),
-                'device' => $request->input('device'),
-                'os' => $request->input('os'),
+                'device_id'   => $request->input('id'),
+                'device'      => $request->input('device'),
+                'os'          => $request->input('os'),
                 'app_version' => $request->input('appVersion'),
-                'ip' => $request->ip(),
             ]);
     
             return response()->json(['message' => 'Device usage stored'], 201);
+    
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Failed to store device usage',
+                'error'   => 'Failed to store device usage',
                 'message' => $e->getMessage()
             ], 500);
         }
