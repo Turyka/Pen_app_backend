@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\HirController;
 use App\Http\Controllers\NaptarController;
+use App\Http\Controllers\EszkozokController;
 use Illuminate\Http\Request;
 
     //Route::get('/felhasznalo', [UserController::class, 'getUsers']);
@@ -16,6 +17,9 @@ use Illuminate\Http\Request;
 
     Route::get('/naptarAPI', [NaptarController::class, 'NaptarAPI']);
 
+
+    // eszkozok
+    Route::post('/eszkozok', [EszkozokController::class, 'report']);
 
     /*
     Route::middleware(['auth:sanctum'])->group(function () {

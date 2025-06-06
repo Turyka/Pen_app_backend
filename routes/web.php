@@ -6,6 +6,7 @@ use App\Http\Controllers\HirController;
 use App\Http\Controllers\NaptarController;
 use App\Http\Controllers\PostokController;
 use App\Http\Controllers\KezdoController;
+use App\Http\Controllers\EszkozokController;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -49,7 +50,7 @@ Route::delete('/dashboard/naptar/{naptar}', [NaptarController::class, 'destroy']
 
 Route::get('/scrape-postok', [PostokController::class, 'scrape']);
 
-
+Route::post('/eszkozok/kiir', [EszkozokController::class, 'index']);
 
 Route::get('/ping', function () {
     Log::info('Pinged at: ' . now());
