@@ -14,24 +14,25 @@ class HirController extends Controller
 {
 
     public function seedDatabase()
-    {
-        try {
-            $migrateOutput = Artisan::call('migrate:refresh', ['--force' => true]);
-            $seedOutput = Artisan::call('db:seed', ['--force' => true]);
-    
-            return response()->json([
-                'message' => 'Database refreshed and seeded successfully.',
-                'migrate_status' => $migrateOutput,
-                'seed_status' => $seedOutput,
-                'migrate_output' => Artisan::output(),
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'An error occurred during migration or seeding.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+{
+    dd(23232323);
+    try {
+        $migrateStatus = Artisan::call('migrate:refresh', ['--force' => true]);
+        $seedStatus = Artisan::call('db:seed', ['--force' => true]); // <-- Add force here
+
+        return response()->json([
+            'message' => 'Database refreshed and seeded successfully.',
+            'migrate_status' => $migrateStatus,
+            'seed_status' => $seedStatus,
+            'migrate_output' => Artisan::output(),
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'An error occurred during migration or seeding.',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
     
     public function scrape()
     {
