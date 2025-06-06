@@ -9,12 +9,13 @@ class EszkozokController extends Controller
     public function index()
     {
         $devices = Eszkozok::orderBy('created_at', 'desc')->get();
+        dd($devices);
     return view('eszkozok', compact('devices'));
     }
 
     public function store(Request $request)
     {
-        dd($request->all());
+      
         $validated = $request->validate([
             'id' => 'required|string',
             'device' => 'required|string',
