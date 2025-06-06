@@ -14,6 +14,7 @@ class EszkozokController extends Controller
 
     public function store(Request $request)
     {
+        dd($request->all());
         $validated = $request->validate([
             'id' => 'required|string',
             'device' => 'required|string',
