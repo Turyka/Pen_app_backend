@@ -13,7 +13,7 @@ return new class extends Migration
 {
     Schema::create('adat_eszkozok', function (Blueprint $table) {
         $table->id();
-        $table->uuid('device_id')->unique();
+        $table->uuid('uuid')->unique();
         $table->string('device')->nullable();
         $table->string('os')->nullable();
         $table->string('app_version')->nullable();

@@ -14,21 +14,22 @@ class EszkozokController extends Controller
 
     public function store(Request $request)
     {
-        try {
-            Eszkozok::create([
-                'device_id'   => $request->input('id'),
-                'device'      => $request->input('device'),
-                'os'          => $request->input('os'),
-                'app_version' => $request->input('appVersion'),
-            ]);
-    
-            return response()->json(['message' => 'Device usage stored'], 201);
-    
-        } catch (\Exception $e) {
-            return response()->json([
-                'error'   => 'Failed to store device usage',
-                'message' => $e->getMessage()
-            ], 500);
-        }
+        $validated = $request->validate([
+            'id' => 'required|string',
+            'device' => 'required|string',
+            'os' => 'required|string',
+            'appVersion' => 'required|string',
+        ]);
+
+        Eszkozok::updateOrCreate(
+            ['uuid' => $validated['id']],
+            [
+                'device' => $validated['device'],
+                'os' => $validated['os'],
+                'app_version' => $validated['appVersion'],
+            ]
+        );
+
+        return response()->json(['success' => true]);
     }
 }
