@@ -43,7 +43,10 @@ class KezdoController extends Controller
     $naptar_szamok = Naptar::count();
     $eszkozok_szamok = Eszkozok::count();
     $hir_Szamok = Hir::count();
-    $eszkozok = Eszkozok::select(Eszkozok::raw("SUBSTRING_INDEX(device, ' ', 1) as brand"), Eszkozok::raw("COUNT(*) as count"))
+    $eszkozok = Eszkozok::select(
+        Eszkozok::raw("IFNULL(NULLIF(TRIM(SUBSTRING_INDEX(device, ' ', 1)), ''), 'Unknown') as brand"),
+        Eszkozok::raw("COUNT(*) as count")
+    )
     ->groupBy('brand')
     ->get();
     return view('dashboard.index', compact('users','naptar_szamok','eszkozok_szamok','hir_Szamok','eszkozok'));
