@@ -1,35 +1,40 @@
-/**
- * For usage, visit Chart.js docs https://www.chartjs.org/docs/latest/
- */
+const deviceChartData = window.deviceChartData || [];
+
+
+const brandColorMap = {
+  Samsung: '#0694a2',
+  iPhone: '#7e3af2',
+  Redmi: '#1c64f2',
+  Huawei: '#10b981',
+  OnePlus: '#f59e0b',
+  Nokia: '#f43f5e',
+  Other: '#6366f1', // fallback color
+};
+
+const deviceLabels = deviceChartData.map(item => item.brand);
+const deviceValues = deviceChartData.map(item => item.count);
+const deviceColors = deviceLabels.map(brand => brandColorMap[brand] || brandColorMap['Other']);
+
 const pieConfig = {
   type: 'doughnut',
   data: {
+    labels: deviceLabels,
     datasets: [
       {
-        data: [13, 33, 33],
-        /**
-         * These colors come from Tailwind CSS palette
-         * https://tailwindcss.com/docs/customizing-colors/#default-color-palette
-         */
-        backgroundColor: ['#0694a2', '#1c64f2', '#7e3af2'],
-        label: 'Dataset 1',
+        data: deviceValues,
+        backgroundColor: deviceColors,
+        label: 'Device Brands',
       },
     ],
-    labels: ['Shoes', 'Shirts', 'Bags'],
   },
   options: {
     responsive: true,
     cutoutPercentage: 80,
-    /**
-     * Default legends are ugly and impossible to style.
-     * See examples in charts.html to add your own legends
-     *  */
     legend: {
       display: false,
     },
   },
-}
+};
 
-// change this to the id of your chart element in HMTL
-const pieCtx = document.getElementById('pie')
-window.myPie = new Chart(pieCtx, pieConfig)
+const pieCtx = document.getElementById('pie');
+window.myPie = new Chart(pieCtx, pieConfig);

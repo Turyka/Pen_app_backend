@@ -2,8 +2,10 @@
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
+use App\Models\Eszkozok;
 use Illuminate\Support\Facades\Hash;
 use Faker\Factory as Faker;
+use Illuminate\Support\Str;
 use App\Models\Naptar;
 class DatabaseSeeder extends Seeder
 {
@@ -45,6 +47,23 @@ class DatabaseSeeder extends Seeder
             'szak' => 'MIK',
             'titulus' => 'Referens'
         ]);
+        /*
+        $brands = ['Samsung', 'iPhone', 'Redmi', 'Huawei', 'OnePlus', 'Nokia'];
+        $faker = \Faker\Factory::create();
+
+        for ($i = 0; $i < 30; $i++) {
+            $brand = $faker->randomElement($brands);
+            $model = strtoupper(Str::random(6)); // e.g. 'AB12CD'
+
+            Eszkozok::create([
+                'device_id'   => Str::uuid(),
+                'device'      => "$brand $model",     // Full device string
+                'os'          => $brand,              // Only the brand name
+                'app_version' => '1.0.0 (' . $faker->numberBetween(1, 5) . ')',
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+        }
         /*
         $faker = Faker::create('hu_HU'); // Magyar lokalizáció
 

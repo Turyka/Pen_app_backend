@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Auth;
 
 Route::get('/', function () {
     return view('login');
-})->name('login');
+})->name('login')->middleware('guest');
 
 Route::post('/login', [KezdoController::class, 'authenticate'])->name('login_store');
 

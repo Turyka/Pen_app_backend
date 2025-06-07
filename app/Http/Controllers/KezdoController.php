@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Eszkozok;
+use App\Models\Hir;
 use Illuminate\Http\Request;
 use App\Models\Naptar;
 use Illuminate\Support\Facades\Auth;
@@ -41,7 +42,11 @@ class KezdoController extends Controller
     $users = User::latest()->paginate(10); 
     $naptar_szamok = Naptar::count();
     $eszkozok_szamok = Eszkozok::count();
-    return view('dashboard.index', compact('users','naptar_szamok','eszkozok_szamok'));
+    $hir_Szamok = Hir::count();
+    $eszkozok = Eszkozok::select(Eszkozok::raw("SUBSTRING_INDEX(device, ' ', 1) as brand"), Eszkozok::raw("COUNT(*) as count"))
+    ->groupBy('brand')
+    ->get();
+    return view('dashboard.index', compact('users','naptar_szamok','eszkozok_szamok','hir_Szamok','eszkozok'));
     }
 
     public function naptar()
