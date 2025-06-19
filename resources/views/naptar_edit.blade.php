@@ -185,7 +185,7 @@ select:focus {
                 <option value="{{ old('status', $naptar->status ?? '') }}" selected>{{ $naptar->status}}</option>
                 <option value="Aktív">Aktív</option>
                 <option value="Függőben">Függőben</option>
-                <option value="Törölve">Törölve</option>
+                <option value="Elmarad">Elmarad</option>
                 <option value="Lezárt">Lezárt</option>
             </select>
 
