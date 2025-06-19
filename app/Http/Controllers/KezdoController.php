@@ -46,7 +46,7 @@ class KezdoController extends Controller
     $eszkozok_szamok = Eszkozok::count();
     $hir_Szamok = Hir::count();
     $eszkozok = Eszkozok::select(
-        DB::raw("IFNULL(NULLIF(TRIM(SUBSTRING_INDEX(device, ' ', 1)), ''), 'Unknown') AS brand"),
+        DB::raw("COALESCE(NULLIF(TRIM(SPLIT_PART(device, ' ', 1)), ''), 'Unknown') AS brand"),
         DB::raw("COUNT(*) as count")
     )
     ->groupBy('brand')
