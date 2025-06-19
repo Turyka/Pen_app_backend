@@ -126,7 +126,7 @@ class NaptarController extends Controller
                 'end_time' => substr($event->end_time, 0, 5),
                 'event_type' => $event->event_type,
                 'description' => $event->description,
-                'created_at' => $event->created_at,
+                'status' => $event->status
             ];
         });
 
