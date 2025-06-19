@@ -15,7 +15,9 @@ Route::get('/', function () {
     return view('login');
 })->name('login')->middleware('guest');
 
-Route::post('/login', [KezdoController::class, 'authenticate'])->name('login_store');
+Route::post('/login', [KezdoController::class, 'authenticate'])
+    ->name('login_store')
+    ->middleware('throttle:5,1'); 
 
 Route::post('/logout', function () {
     Auth::logout();

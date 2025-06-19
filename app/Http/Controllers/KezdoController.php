@@ -29,6 +29,7 @@ class KezdoController extends Controller
 
         if ($user && Hash::check($credentials['password'], $user->password)) {
             Auth::login($user);
+            $request->session()->regenerate();
             return redirect()->intended('/dashboard/main');
         }
 
