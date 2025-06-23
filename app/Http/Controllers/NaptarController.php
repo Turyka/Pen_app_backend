@@ -104,8 +104,13 @@ class NaptarController extends Controller
     }
 
     // 🌐 Naptár API (JSON)
-    public function naptarAPI()
+    public function naptarAPI(Request $request)
     {
+       
+        if ($request->query('titkos') !== env('API_SECRET')) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
         $events = Naptar::all()->map(function ($event) {
             $baseName = strtolower(str_replace(' ', '', $event->event_type));
             $pngPath = public_path("img/{$baseName}.png");
