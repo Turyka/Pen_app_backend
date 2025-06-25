@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Eszkozok;
 use App\Models\Hir;
+use App\Models\NapiLogin;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\Naptar;
@@ -53,20 +54,20 @@ class KezdoController extends Controller
     ->groupBy('brand')
     ->get();
     
-    $startDate = Carbon::now()->subDays(6)->startOfDay(); 
-    $endDate = Carbon::now()->endOfDay();
+$start = now()->subDays(6)->startOfDay(); // last 7 days including today
+$end = now()->endOfDay();
 
-    $logins = Eszkozok::select(
+$napilogin = NapiLogin::select(
         DB::raw("CAST(datetime AS DATE) as date"),
         DB::raw("COUNT(*) as count")
     )
-    ->whereBetween('datetime', [$startDate, $endDate])
+    ->whereBetween('datetime', [$start, $end])
     ->groupBy('date')
     ->orderBy('date')
-    ->pluck('count', 'date');
+    ->get();
 
     $napilogin = [];
-    for ($date = $startDate->copy(); $date <= $endDate; $date->addDay()) {
+    for ($date = $start->copy(); $date <= $end; $date->addDay()) {
         $napilogin[] = [
             'date' => $date->toDateString(),
             'count' => $logins[$date->toDateString()] ?? 0,
