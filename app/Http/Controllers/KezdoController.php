@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Eszkozok;
 use App\Models\Hir;
-use App\Models\NapiLogin;
+use App\Models\Napilogin;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\Naptar;
@@ -49,7 +49,7 @@ class KezdoController extends Controller
     $hir_Szamok = Hir::count();
     $eszkozok = Eszkozok::select(
         DB::raw("COALESCE(NULLIF(TRIM(SPLIT_PART(device, ' ', 1)), ''), 'Unknown') AS brand"),
-        DB::raw("COUNT(*) as count")
+        DB::raw("COUNT(*) as count")    
     )
     ->groupBy('brand')
     ->get();
@@ -57,7 +57,7 @@ class KezdoController extends Controller
 $start = now()->subDays(6)->startOfDay(); // last 7 days including today
 $end = now()->endOfDay();
 
-$napilogin = NapiLogin::select(
+$napilogin = Napilogin::select(
         DB::raw("CAST(datetime AS DATE) as date"),
         DB::raw("COUNT(*) as count")
     )
