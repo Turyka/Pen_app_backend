@@ -1,71 +1,57 @@
-/**
- * For usage, visit Chart.js docs https://www.chartjs.org/docs/latest/
- */
+const loginData = window.napilogin;
+
+const labels = loginData.map(item => {
+  const date = new Date(item.date);
+  return date.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' }); 
+});
+
+const counts = loginData.map(item => item.count);
+
 const lineConfig = {
   type: 'line',
   data: {
-    labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
-    datasets: [
-      {
-        label: 'Organic',
-        /**
-         * These colors come from Tailwind CSS palette
-         * https://tailwindcss.com/docs/customizing-colors/#default-color-palette
-         */
-        backgroundColor: '#0694a2',
-        borderColor: '#0694a2',
-        data: [43, 48, 40, 54, 67, 73, 70],
-        fill: false,
-      },
-      {
-        label: 'Paid',
-        fill: false,
-        /**
-         * These colors come from Tailwind CSS palette
-         * https://tailwindcss.com/docs/customizing-colors/#default-color-palette
-         */
-        backgroundColor: '#7e3af2',
-        borderColor: '#7e3af2',
-        data: [24, 50, 64, 74, 52, 51, 65],
-      },
-    ],
+    labels: labels,
+    datasets: [{
+      label: 'Napi eszközhasználat (7 nap)',
+      backgroundColor: '#0694a2',
+      borderColor: '#0694a2',
+      data: counts,
+      fill: false,
+      tension: 0.3,
+    }],
   },
   options: {
     responsive: true,
-    /**
-     * Default legends are ugly and impossible to style.
-     * See examples in charts.html to add your own legends
-     *  */
-    legend: {
-      display: false,
+    plugins: {
+      legend: {
+        display: true,
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+      },
     },
-    tooltips: {
-      mode: 'index',
-      intersect: false,
-    },
-    hover: {
+    interaction: {
       mode: 'nearest',
       intersect: true,
     },
     scales: {
       x: {
-        display: true,
-        scaleLabel: {
+        title: {
           display: true,
-          labelString: 'Month',
+          text: 'Dátum',
         },
       },
       y: {
-        display: true,
-        scaleLabel: {
+        title: {
           display: true,
-          labelString: 'Value',
+          text: 'Eszközök száma',
         },
+        beginAtZero: true,
       },
     },
   },
-}
+};
 
-// change this to the id of your chart element in HMTL
-const lineCtx = document.getElementById('line')
-window.myLine = new Chart(lineCtx, lineConfig)
+const lineCtx = document.getElementById('line');
+window.myLine = new Chart(lineCtx, lineConfig);

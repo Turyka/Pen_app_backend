@@ -5,6 +5,7 @@
   <title>Főmenü</title>
   <script>
     window.deviceChartData = @json($eszkozok);
+    window.napilogin = @json($napilogin);
   </script> 
   @include('dashboard.Parts._head')
 </head>
