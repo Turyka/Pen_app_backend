@@ -73,6 +73,7 @@ $napilogin = Napilogin::select(
             'count' => $logins[$date->toDateString()] ?? 0,
         ];
     }
+    dd($napilogin);
 
     return view('dashboard.index', compact('users','naptar_szamok','eszkozok_szamok','hir_Szamok','eszkozok','napilogin'));
     }
