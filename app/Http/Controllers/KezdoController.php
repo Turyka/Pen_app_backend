@@ -57,7 +57,7 @@ class KezdoController extends Controller
     $endDate = Carbon::now()->endOfDay();
 
     $logins = Eszkozok::select(
-        DB::raw("DATE(datetime) as date"),
+        DB::raw("CAST(datetime AS DATE) as date"),
         DB::raw("COUNT(*) as count")
     )
     ->whereBetween('datetime', [$startDate, $endDate])
