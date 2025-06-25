@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 
     Route::get('/hirekAPI', [HirController::class, 'apiIndex']);
 
-
+    Route::post('/napi-bejelentkezes', [EszkozokController::class, 'napi']);
 
     Route::get('/naptarAPI', [NaptarController::class, 'NaptarAPI']);
 
