@@ -54,29 +54,28 @@ class KezdoController extends Controller
     ->groupBy('brand')
     ->get();
     
-    $start = now()->subDays(6)->startOfDay(); // last 7 days including today
-    $end = now()->endOfDay();
-    
-    // Step 1: Get actual login counts by date
-    $rawLogins = Napilogin::select(
-            DB::raw("CAST(datetime AS DATE) as date"),
-            DB::raw("COUNT(*) as count")
-        )
-        ->whereBetween('datetime', [$start, $end])
-        ->groupBy('date')
-        ->orderBy('date')
-        ->get();
-    
-    // Step 2: Map raw results into key-value for lookup
-    $logins = $rawLogins->pluck('count', 'date')->all(); // ['2025-06-25' => 1, ...]
-    
-    $napilogin = [];
-    for ($date = $start->copy(); $date <= $end; $date->addDay()) {
-        $napilogin[] = [
-            'date' => $date->toDateString(),
-            'count' => $logins[$date->toDateString()] ?? 0,
-        ];
-    }
+    $tz = 'Europe/Budapest'; // vagy config('app.timezone')
+$start = Carbon::now($tz)->subDays(6)->startOfDay();
+$end   = Carbon::now($tz)->endOfDay();
+
+$rawLogins = Napilogin::select(
+        DB::raw("CAST(datetime AS DATE) as date"),
+        DB::raw("COUNT(*) as count")
+    )
+    ->whereBetween('datetime', [$start, $end])
+    ->groupBy('date')
+    ->orderBy('date')
+    ->get();
+
+$logins = $rawLogins->pluck('count', 'date')->all();
+
+$napilogin = [];
+for ($date = $start->copy(); $date <= $end; $date->addDay()) {
+    $napilogin[] = [
+        'date'  => $date->toDateString(),        // 2025-06-26
+        'count' => $logins[$date->toDateString()] ?? 0,
+    ];
+}
 
     return view('dashboard.index', compact('users','naptar_szamok','eszkozok_szamok','hir_Szamok','eszkozok','napilogin'));
     }
