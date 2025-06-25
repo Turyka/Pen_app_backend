@@ -1,29 +1,29 @@
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  // Step 1: Access login data from Laravel
+  // Laravel data: each item has { device_id, datetime, ... }
   const loginData = window.napilogin;
 
-  // Step 2: Build a full list of the last 7 days
+  // Step 1: Get last 7 days (formatted as YYYY-MM-DD)
   function getLast7Days() {
     const days = [];
     const today = new Date();
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
-      days.push(d.toISOString().slice(0, 10)); // format: YYYY-MM-DD
+      days.push(d.toISOString().slice(0, 10));
     }
     return days;
   }
 
   const last7Days = getLast7Days();
 
-  // Step 3: Match counts with days, fill missing with 0
+  // Step 2: Count logins by date (extracted from datetime)
   const countsByDate = {};
   loginData.forEach(entry => {
-    countsByDate[entry.date] = entry.count;
+    const date = entry.datetime.slice(0, 10); // 'YYYY-MM-DD'
+    countsByDate[date] = (countsByDate[date] || 0) + 1;
   });
 
+  // Step 3: Prepare labels and datapoints
   const labels = [];
   const dataPoints = [];
 
@@ -32,7 +32,7 @@
     dataPoints.push(countsByDate[date] ?? 0);
   });
 
-  // Step 4: Build the chart config
+  // Step 4: Chart config
   const lineConfig = {
     type: 'line',
     data: {
@@ -80,6 +80,7 @@
     },
   };
 
-  // Step 5: Render the chart
+  // Step 5: Render chart
   const lineCtx = document.getElementById('line');
   window.myLine = new Chart(lineCtx, lineConfig);
+
