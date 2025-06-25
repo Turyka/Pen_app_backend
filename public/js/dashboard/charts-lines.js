@@ -1,6 +1,4 @@
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   // Step 1: Access login data from Laravel
   const loginData = window.napilogin;
 
