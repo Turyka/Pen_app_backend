@@ -19,6 +19,10 @@ class KezdoController extends Controller
     {
         return view('login');
     }
+    public function command()
+    {
+        return view('commandok');
+    }
 
     public function authenticate(Request $request)
     {

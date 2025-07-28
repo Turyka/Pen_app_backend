@@ -11,6 +11,10 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
+
+// Commandok
+Route::get('/commandok', [KezdoController::class, 'command']);
+
 Route::get('/', function () {
     return view('login');
 })->name('login')->middleware('guest');
