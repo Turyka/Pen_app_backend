@@ -52,13 +52,7 @@ class KezdoController extends Controller
     $naptar_szamok = Naptar::count();
     $eszkozok_szamok = Eszkozok::count();
     $hir_Szamok = Hir::count();
-    $eszkozok = Eszkozok::select(
-    DB::raw("COALESCE(NULLIF(TRIM(SUBSTRING_INDEX(device, ' ', 1)), ''), 'Unknown') AS brand"),
-    DB::raw("COUNT(*) as count")
-)
-->groupBy('brand')
-->get();
-    
+$eszkozok = Eszkozok::select( DB::raw("COALESCE(NULLIF(TRIM(SPLIT_PART(device, ' ', 1)), ''), 'Unknown') AS brand"), DB::raw("COUNT(*) as count") ) ->groupBy('brand') ->get();
     $tz = 'Europe/Budapest'; // vagy config('app.timezone')
 $start = Carbon::now($tz)->subDays(6)->startOfDay();
 $end   = Carbon::now($tz)->endOfDay();
