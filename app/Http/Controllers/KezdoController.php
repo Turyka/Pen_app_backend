@@ -8,7 +8,7 @@ use App\Models\Napilogin;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\Naptar;
-use App\Models\kozlemeny;
+use App\Models\Kozlemeny;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
