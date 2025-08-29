@@ -88,7 +88,7 @@ for ($date = $start->copy(); $date <= $end; $date->addDay()) {
 
     public function kozlemeny()
     {
-    $kozlemenyek = kozlemeny::orderBy('created_at', 'DESC')->paginate(10);
+    $kozlemenyek = Kozlemeny::orderBy('created_at', 'DESC')->paginate(10);
 
     return view('dashboard.kozlemeny', compact('kozlemenyek'));
     }
