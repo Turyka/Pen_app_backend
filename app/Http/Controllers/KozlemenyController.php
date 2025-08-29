@@ -101,7 +101,7 @@ class KozlemenyController extends Controller
             'updated_at'  => $event->updated_at ? $event->updated_at->format('Y-m-d H:i:s') : null,
             ];
         });
-        dd(response()->json($events));
+
         return response()->json($events);
     }
 
