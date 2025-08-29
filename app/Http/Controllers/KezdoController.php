@@ -8,6 +8,7 @@ use App\Models\Napilogin;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\Naptar;
+use App\Models\kozlemeny;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -52,11 +53,11 @@ class KezdoController extends Controller
     $eszkozok_szamok = Eszkozok::count();
     $hir_Szamok = Hir::count();
     $eszkozok = Eszkozok::select(
-        DB::raw("COALESCE(NULLIF(TRIM(SPLIT_PART(device, ' ', 1)), ''), 'Unknown') AS brand"),
-        DB::raw("COUNT(*) as count")    
-    )
-    ->groupBy('brand')
-    ->get();
+    DB::raw("COALESCE(NULLIF(TRIM(SUBSTRING_INDEX(device, ' ', 1)), ''), 'Unknown') AS brand"),
+    DB::raw("COUNT(*) as count")
+)
+->groupBy('brand')
+->get();
     
     $tz = 'Europe/Budapest'; // vagy config('app.timezone')
 $start = Carbon::now($tz)->subDays(6)->startOfDay();
@@ -89,5 +90,12 @@ for ($date = $start->copy(); $date <= $end; $date->addDay()) {
     $naptarok = Naptar::orderBy('date', 'DESC')->paginate(10);
 
     return view('dashboard.naptar', compact('naptarok'));
+    }
+
+    public function kozlemeny()
+    {
+    $kozlemenyek = kozlemeny::orderBy('created_at', 'DESC')->paginate(10);
+
+    return view('dashboard.kozlemeny', compact('kozlemenyek'));
     }
 }

@@ -5,6 +5,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\HirController;
 use App\Http\Controllers\NaptarController;
 use App\Http\Controllers\EszkozokController;
+use App\Http\Controllers\KozlemenyController;
 use Illuminate\Http\Request;
 
     //Route::get('/felhasznalo', [UserController::class, 'getUsers']);
@@ -16,6 +17,8 @@ use Illuminate\Http\Request;
     Route::post('/napi-bejelentkezes', [EszkozokController::class, 'napi']);
 
     Route::get('/naptarAPI', [NaptarController::class, 'NaptarAPI']);
+
+    Route::get('/kozlemenyAPI', [KozlemenyController::class, 'KozlemenyAPI']);
 
 
     // eszkozok

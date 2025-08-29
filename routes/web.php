@@ -7,6 +7,7 @@ use App\Http\Controllers\NaptarController;
 use App\Http\Controllers\PostokController;
 use App\Http\Controllers\KezdoController;
 use App\Http\Controllers\EszkozokController;
+use App\Http\Controllers\KozlemenyController;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -46,13 +47,29 @@ Route::get('/dashboard/main', [KezdoController::class, 'dashboard'])->name('dash
 Route::get('/dashboard/naptar', [KezdoController::class, 'naptar'])->name('naptar')->middleware('auth');
 
 //NAPTÁR Készít
-Route::get('/dashboard/naptar/keszit', [NaptarController::class, 'keszit'])->name('keszit')->middleware('auth');
+Route::get('/dashboard/naptar/keszit', [NaptarController::class, 'keszit'])->name('keszit_naptar')->middleware('auth');
 Route::post('/dashboard/naptar/store', [NaptarController::class, 'store'])->name('naptar.store')->middleware('auth');
 
 //Naptár Update
 Route::get('/dashboard/naptar/{naptar}/edit', [NaptarController::class, 'edit'])->name('naptar.edit')->middleware('auth');
 Route::put('/dashboard/naptar/{naptar}', [NaptarController::class, 'update'])->name('naptar.update')->middleware('auth');
 Route::delete('/dashboard/naptar/{naptar}', [NaptarController::class, 'destroy'])->name('naptar.destroy')->middleware('auth');
+
+//Kozlemény
+Route::get('/dashboard/kozlemeny', [KezdoController::class, 'kozlemeny'])->name('kozlemeny')->middleware('auth');
+
+//Kozlemenyek Készít
+Route::get('/dashboard/kozlemeny/keszit', [KozlemenyController::class, 'keszit'])->name('keszit_kozlemeny')->middleware('auth');
+Route::post('/dashboard/kozlemeny/store', [KozlemenyController::class, 'store'])->name('kozlemeny.store')->middleware('auth');
+
+//Kozlemenyek Update
+Route::get('/dashboard/kozlemeny/{kozlemeny}/edit', [KozlemenyController::class, 'edit'])->name('kozlemeny.edit')->middleware('auth');
+Route::put('/dashboard/kozlemeny/{kozlemeny}', [KozlemenyController::class, 'update'])->name('kozlemeny.update')->middleware('auth');
+Route::delete('/dashboard/kozlemeny/{kozlemeny}', [KozlemenyController::class, 'destroy'])->name('kozlemeny.destroy')->middleware('auth');
+
+
+
+
 
 Route::get('/scrape-postok', [PostokController::class, 'scrape']);
 

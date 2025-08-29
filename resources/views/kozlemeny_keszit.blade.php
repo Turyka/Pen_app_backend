@@ -2,7 +2,7 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>Esemény létrehozása</title>
+    <title>közlemény létrehozása</title>
     <style>
         :root {
             --bg: #0f0f0f;
@@ -172,7 +172,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📅 Új esemény létrehozása 📅</h1>
+        <h1>📣 Új közlemény létrehozása 📣</h1>
 
         @if ($errors->any())
         <div class="error">
@@ -184,45 +184,16 @@
         </div>
         @endif
 
-        <form action="{{ route('naptar.store') }}" method="POST">
+        <form action="{{ route('kozlemeny.store') }}" method="POST">
             @csrf
 
             <label for="title">Cím</label>
-            <input type="text" name="title" id="title" placeholder="Milyen esemény..." required>
-
-            <label for="date">Dátum</label>
-            <input type="date" name="date" id="date" required min="{{ date('Y-m-d') }}">
-
-            <div class="time-group">
-                <div>
-                    <label for="start_time">Kezdés</label>
-                    <input type="time" name="start_time" id="start_time" required>
-                </div>
-                <div>
-                    <label for="end_time">Befejezés</label>
-                    <input type="time" name="end_time" id="end_time" required>
-                </div>
-            </div>
-
-            <label for="event_type">Esemény típusa</label>
-            <select name="event_type" id="event_type" required>
-                <option value="" disabled selected>Válassz eseménytípust</option>
-                <option value="Sorpong">Sőrpong</option>
-                <option value="Kvizest">Kvízest</option>
-                <option value="Kocsmatura">Kocsmatura</option>
-                <option value="Szuletesnap">Születésnap</option>
-                <option value="Pingpong-verseny">Pingpong-verseny</option>
-                <option value="Kocamuri">Kocamuri</option>
-                <option value="Sportnapok">Sportnapok</option>
-                <option value="Eloadas">Előadás</option>
-                <option value="egyebb">Egyéb</option>
-            </select>
+            <input type="text" name="title" id="title" placeholder="Milyen közlemény..." required>
 
             <label for="description">Leírás</label>
-            <textarea name="description" id="description" rows="4" placeholder="Pl: B épület, előadó, vagy Plakát kocsma (helyszin)"></textarea>
+            <textarea name="description" id="description" placeholder="Közlemény Leírása..."></textarea>
 
-
-            <div class="toggle-group">
+<div class="toggle-group">
     <input type="hidden" name="ertesites" value="0">
 
     <label class="switch">
@@ -231,7 +202,6 @@
     </label>
     <label for="ertesites"> Legyen App Értesítés be / ki</label>
 </div>
-
 
             <button type="submit">Elküldés</button>
         </form>

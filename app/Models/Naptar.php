@@ -18,6 +18,7 @@ class Naptar extends Model
         'created',
         'edited',
         'description',
+        'ertesites',
     ];
     public function getFormattedStartTimeAttribute()
     {

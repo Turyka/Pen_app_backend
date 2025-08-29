@@ -6,62 +6,78 @@
     <title>{{ $naptar->title}} - Szerkesztése</title>
     <style>
         :root {
-            --primary: #2563eb;
-            --gray: #f1f5f9;
-            --gray-dark: #64748b;
-            --error: #dc2626;
+            --bg: #0f0f0f;
+            --card: #1a1a1a;
+            --text: #f5f5f5;
+            --muted: #a1a1a1;
+            --border: #333;
+            --accent: #ffffff;
+            --error: #e11d48;
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
-            padding: 0;
             font-family: 'Segoe UI', sans-serif;
-            background-color: var(--gray);
+            background-color: var(--bg);
+            color: var(--text);
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            padding: 1rem;
         }
 
         .container {
-            background: white;
+            background: var(--card);
             padding: 2rem;
             border-radius: 1rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
             width: 100%;
             max-width: 500px;
         }
 
         h1 {
             text-align: center;
-            font-size: 1.5rem;
-            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
         }
 
         label {
             display: block;
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.5rem;
             font-weight: 500;
+            color: var(--muted);
+            font-size: 0.95rem;
         }
 
         input,
+        select,
         textarea {
             width: 100%;
             padding: 0.75rem;
-            border: 1px solid #cbd5e1;
+            border: 1px solid var(--border);
             border-radius: 0.5rem;
             margin-bottom: 1rem;
             font-size: 1rem;
-            transition: border 0.2s;
+            background-color: var(--card);
+            color: var(--text);
+        }
+
+        /* Keep Firefox native icons visible */
+        input[type="time"],
+        input[type="date"] {
+            appearance: auto; 
+            -moz-appearance: auto;
+            -webkit-appearance: auto;
         }
 
         input:focus,
+        select:focus,
         textarea:focus {
-            border-color: var(--primary);
+            border-color: var(--accent);
             outline: none;
         }
 
@@ -70,11 +86,21 @@
             gap: 1rem;
         }
 
+        .time-group input {
+            flex: 1;
+        }
+
+        select option {
+            background-color: var(--card);
+            color: var(--text);
+        }
+
         button {
             width: 100%;
-            padding: 0.75rem;
-            background-color: var(--primary);
-            color: white;
+            padding: 0.85rem;
+            background-color: var(--accent);
+            color: var(--bg);
+            font-weight: 600;
             font-size: 1rem;
             border: none;
             border-radius: 0.5rem;
@@ -83,38 +109,19 @@
         }
 
         button:hover {
-            background-color: #1d4ed8;
+            background-color: #e5e5e5;
         }
 
         .error {
-            background-color: #fee2e2;
+            background-color: rgba(225,29,72,0.1);
             color: var(--error);
             padding: 0.75rem;
             border-radius: 0.5rem;
             margin-bottom: 1rem;
+            border: 1px solid var(--error);
         }
 
-        .error ul {
-            margin: 0;
-            padding-left: 1.2rem;
-        }
-        
-        select {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 0.5rem;
-    margin-bottom: 1rem;
-    font-size: 1rem;
-    background-color: white;
-    transition: border 0.2s;
-}
-
-select:focus {
-    border-color: var(--primary);
-    outline: none;
-}
-
+        .error ul { margin: 0; padding-left: 1.2rem; }
     </style>
     <script>
     const eventTypeSelect = document.getElementById('event_type');

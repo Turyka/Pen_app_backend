@@ -25,6 +25,7 @@ class NaptarController extends Controller
             'end_time' => 'required|date_format:H:i|after:start_time',
             'event_type' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'ertesites' => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -48,6 +49,7 @@ class NaptarController extends Controller
             'description' => $request->input('description'),
             'status' => 'Aktív',
             'created' => $user->teljes_nev,
+            'ertesites' => $request->input('ertesites'),
         ]);
 
         return redirect('/dashboard/naptar')->with('success', 'Esemény sikeresen mentve!');

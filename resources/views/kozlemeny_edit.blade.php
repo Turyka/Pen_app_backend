@@ -2,7 +2,7 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>Esemény létrehozása</title>
+    <title>{{ $kozlemeny->title }} - Szerkesztése</title>
     <style>
         :root {
             --bg: #0f0f0f;
@@ -53,7 +53,6 @@
         }
 
         input,
-        select,
         textarea {
             width: 100%;
             padding: 0.85rem 1rem;
@@ -61,7 +60,6 @@
             border-radius: 0.5rem;
             margin-bottom: 1.5rem;
             font-size: 1rem;
-            line-height: 1.5;
             background-color: var(--card);
             color: var(--text);
             transition: border-color 0.2s, box-shadow 0.2s;
@@ -75,7 +73,6 @@
         }
 
         input:focus,
-        select:focus,
         textarea:focus {
             border-color: var(--accent);
             box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
@@ -172,7 +169,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📅 Új esemény létrehozása 📅</h1>
+        <h1>📣 "{{ $kozlemeny->title }}" - Szerkesztése 📣</h1>
 
         @if ($errors->any())
         <div class="error">
@@ -184,56 +181,28 @@
         </div>
         @endif
 
-        <form action="{{ route('naptar.store') }}" method="POST">
+        <form action="{{ route('kozlemeny.update', $kozlemeny->id) }}" method="POST">
             @csrf
+            @method('PUT')
 
             <label for="title">Cím</label>
-            <input type="text" name="title" id="title" placeholder="Milyen esemény..." required>
-
-            <label for="date">Dátum</label>
-            <input type="date" name="date" id="date" required min="{{ date('Y-m-d') }}">
-
-            <div class="time-group">
-                <div>
-                    <label for="start_time">Kezdés</label>
-                    <input type="time" name="start_time" id="start_time" required>
-                </div>
-                <div>
-                    <label for="end_time">Befejezés</label>
-                    <input type="time" name="end_time" id="end_time" required>
-                </div>
-            </div>
-
-            <label for="event_type">Esemény típusa</label>
-            <select name="event_type" id="event_type" required>
-                <option value="" disabled selected>Válassz eseménytípust</option>
-                <option value="Sorpong">Sőrpong</option>
-                <option value="Kvizest">Kvízest</option>
-                <option value="Kocsmatura">Kocsmatura</option>
-                <option value="Szuletesnap">Születésnap</option>
-                <option value="Pingpong-verseny">Pingpong-verseny</option>
-                <option value="Kocamuri">Kocamuri</option>
-                <option value="Sportnapok">Sportnapok</option>
-                <option value="Eloadas">Előadás</option>
-                <option value="egyebb">Egyéb</option>
-            </select>
+            <input type="text" name="title" id="title" 
+                   value="{{ old('title', $kozlemeny->title) }}" required>
 
             <label for="description">Leírás</label>
-            <textarea name="description" id="description" rows="4" placeholder="Pl: B épület, előadó, vagy Plakát kocsma (helyszin)"></textarea>
-
+            <textarea name="description" id="description">{{ old('description', $kozlemeny->description) }}</textarea>
 
             <div class="toggle-group">
-    <input type="hidden" name="ertesites" value="0">
+                <input type="hidden" name="ertesites" value="0">
+                <label class="switch">
+                    <input type="checkbox" name="ertesites" id="ertesites" value="1" 
+                           {{ old('ertesites', $kozlemeny->ertesites) ? 'checked' : '' }}>
+                    <span class="slider"></span>
+                </label>
+                <label for="ertesites"> Legyen App Értesítés be / ki</label>
+            </div>
 
-    <label class="switch">
-        <input type="checkbox" name="ertesites" id="ertesites" value="1">
-        <span class="slider"></span>
-    </label>
-    <label for="ertesites"> Legyen App Értesítés be / ki</label>
-</div>
-
-
-            <button type="submit">Elküldés</button>
+            <button type="submit">Mentés</button>
         </form>
     </div>
 </body>
