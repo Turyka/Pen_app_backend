@@ -16,6 +16,9 @@ return new class extends Migration
         $table->string('device_id')->unique(); 
         $table->string('device');
         $table->string('os');
+        $table->string('fcm_token');
+        $table->boolean('kozlemenyErtesites')->default(true);
+        $table->boolean('naptarErtesites')->default(true);
         $table->timestamps();
     });
 }
