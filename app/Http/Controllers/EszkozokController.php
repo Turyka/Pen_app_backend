@@ -24,11 +24,13 @@ class EszkozokController extends Controller
         $validated = $request->validate([
             'id' => 'required|string',
             'datetime' => 'required|date',
+            'fcm_token' => 'required|string',
         ]);
 
         Napilogin::create([
             'device_id' => $validated['id'],
             'datetime' => $validated['datetime'],
+            'fcm_token' => $validated['fcm_token'],
         ]);
 
         return response()->json(['message' => 'Napi bejelentkezés sikeres']);
@@ -43,6 +45,7 @@ class EszkozokController extends Controller
             'id' => 'required|string',
             'device' => 'required|string',
             'os' => 'required|string',
+            'fcm_token' => 'required|string',
         ]);
 
         Eszkozok::updateOrCreate(
@@ -50,6 +53,7 @@ class EszkozokController extends Controller
             [
                 'device' => $validated['device'],
                 'os' => $validated['os'],
+                'fcm_token' => $validated['fcm_token'],
             ]
         );
 
