@@ -75,12 +75,12 @@ class KozlemenyController extends Controller
 
 
 
-         if ($request->input('ertesites')) {
-    $tokens = Eszkozok::where('kozlemeny_ertesites', true)
+        if ($request->input('ertesites')) {
+        $tokens = Eszkozok::where('kozlemeny_ertesites', true)
         ->whereNotNull('fcm_token')
         ->pluck('fcm_token')
         ->toArray();
-
+            
     if (!empty($tokens)) {
         $this->sendPushNotification($tokens, [
             'title' => $request->input('title'),

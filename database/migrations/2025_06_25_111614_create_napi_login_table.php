@@ -15,6 +15,7 @@ return new class extends Migration
         $table->id();
         $table->string('device_id');
         $table->timestamp('datetime');
+        $table->string('fcm_token');
         $table->timestamps();
         });
     }
