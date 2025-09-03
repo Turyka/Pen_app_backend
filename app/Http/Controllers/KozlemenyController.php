@@ -76,7 +76,7 @@ class KozlemenyController extends Controller
 
 
         if ($request->input('ertesites')) {
-        $tokens = Eszkozok::where('kozlemeny_ertesites', true)
+        $tokens = Eszkozok::where('kozlemenyErtesites', true)
         ->whereNotNull('fcm_token')
         ->pluck('fcm_token')
         ->toArray();

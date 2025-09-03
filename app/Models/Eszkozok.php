@@ -13,7 +13,7 @@ class Eszkozok extends Model
     'os',
     'app_version',
     'fcm_token',
-    'kozlemeny_ertesites',
-    'naptar_ertesites',
+    'kozlemenyErtesites',
+    'naptarErtesites',
     ];
 }
