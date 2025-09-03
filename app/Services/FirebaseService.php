@@ -8,8 +8,6 @@ use Kreait\Firebase\Messaging\Notification;
 use Kreait\Firebase\Exception\FirebaseException;
 use Illuminate\Support\Facades\Log;
 
-
-
 class FirebaseService
 {
     protected $messaging;
@@ -19,11 +17,11 @@ class FirebaseService
         $credentialsPath = base_path(env('FIREBASE_CREDENTIALS'));
 
         if (!file_exists($credentialsPath)) {
+            Log::error("Firebase credentials file not found at: {$credentialsPath}");
             throw new \Exception("Firebase credentials file not found at: {$credentialsPath}");
         }
 
         $factory = (new Factory)->withServiceAccount($credentialsPath);
-
         $this->messaging = $factory->createMessaging();
     }
 
@@ -33,7 +31,7 @@ class FirebaseService
     public function sendNotification(array $tokens, string $title, string $body)
     {
         if (empty($tokens)) {
-            Log::warning('No FCM tokens provided.');
+            Log::warning('No FCM tokens provided.', ['tokens' => $tokens]);
             return;
         }
 
@@ -45,12 +43,11 @@ class FirebaseService
                     ->withNotification($notification);
 
                 $this->messaging->send($message);
-
                 Log::info("Notification sent to token: {$token}");
             } catch (FirebaseException $e) {
-                Log::error("Firebase exception: {$e->getMessage()} for token: {$token}");
+                Log::error("Firebase exception: {$e->getMessage()}", ['token' => $token]);
             } catch (\Exception $e) {
-                Log::error("General exception: {$e->getMessage()} for token: {$token}");
+                Log::error("General exception: {$e->getMessage()}", ['token' => $token]);
             }
         }
     }
