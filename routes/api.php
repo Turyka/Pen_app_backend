@@ -20,7 +20,7 @@ use Illuminate\Http\Request;
 
     Route::get('/kozlemenyAPI', [KozlemenyController::class, 'KozlemenyAPI']);
 
-
+    Route::patch('/update/ertesites/{id}', [EszkozokController::class, 'update']);
     // eszkozok
     Route::post('/eszkozok', [EszkozokController::class, 'store']);
 
