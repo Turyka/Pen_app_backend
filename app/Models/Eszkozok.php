@@ -12,6 +12,7 @@ class Eszkozok extends Model
     'device',
     'os',
     'app_version',
+    'fcm_token',
     'kozlemeny_ertesites',
     'naptar_ertesites',
     ];
