@@ -45,7 +45,7 @@ class KozlemenyController extends Controller
 
         // 🔔 Handle notifications
         if ($request->input('ertesites')) {
-    $tokens = Eszkozok::where('kozlemenyErtesites', true)
+        $tokens = Eszkozok::where('kozlemenyErtesites', true)
         ->whereNotNull('fcm_token')
         ->pluck('fcm_token')
         ->toArray();
