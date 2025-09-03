@@ -10,6 +10,7 @@
     "require": {
         "php": "^8.0",
         "guzzlehttp/guzzle": "*",
+        "kreait/firebase-php": "^5.26",
         "laravel/framework": "^11.0",
         "laravel/tinker": "^2.9",
         "symfony/css-selector": "*",

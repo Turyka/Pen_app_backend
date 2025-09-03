@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Kozlemeny;
 use App\Models\Eszkozok;
+use App\Services\FirebaseService;
 class KozlemenyController extends Controller
 {
     public function keszit()
@@ -14,37 +15,6 @@ class KozlemenyController extends Controller
         return view('kozlemeny_keszit');
     }
 
-  private function sendPushNotification($tokens, $data)
-{
-    $serverKey = env('FCM_SERVER_KEY');
-
-    $headers = [
-        'Authorization: key=' . $serverKey,
-        'Content-Type: application/json',
-    ];
-
-    $body = [
-        'registration_ids' => $tokens, // list of FCM tokens
-        'notification' => [
-            'title' => $data['title'],
-            'body'  => $data['body'],
-        ],
-        'data' => $data, // optional, custom data
-    ];
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://fcm.googleapis.com/fcm/send');
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
-
-    $response = curl_exec($ch);
-    curl_close($ch);
-
-    return $response;
-}
     // 📩 Naptár mentése (POST)
     public function store(Request $request, Kozlemeny $kozlemeny)
     {
@@ -73,21 +43,38 @@ class KozlemenyController extends Controller
             'created' => $user->teljes_nev,
         ]);
 
-
-
+        // 🔔 Handle notifications
         if ($request->input('ertesites')) {
-        $tokens = Eszkozok::where('kozlemenyErtesites', true)
+    $tokens = Eszkozok::where('kozlemenyErtesites', true)
         ->whereNotNull('fcm_token')
         ->pluck('fcm_token')
         ->toArray();
-            
+
     if (!empty($tokens)) {
-        $this->sendPushNotification($tokens, [
-            'title' => $request->input('title'),
-            'body'  => $request->input('description') ?? '',
-        ]);
+        try {
+            $result = app(\App\Services\FirebaseService::class)->sendNotification(
+                $tokens,
+                $request->input('title'),
+                $request->input('description') ?? ''
+            );
+
+            // Debug response from Firebase
+            if (!$result) {
+                dd('❌ Firebase did not return a result. Check env path or API config.');
+            }
+
+            if (isset($result['error'])) {
+                dd('❌ Firebase error:', $result);
+            }
+
+        } catch (\Exception $e) {
+            dd('❌ Exception while sending notification', $e->getMessage());
+        }
+    } else {
+        dd('⚠️ No FCM tokens found in DB');
     }
 }
+
         return redirect('/dashboard/kozlemeny')->with('success', 'Esemény sikeresen mentve!');
     }
 
