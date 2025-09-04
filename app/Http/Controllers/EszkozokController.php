@@ -61,17 +61,13 @@ class EszkozokController extends Controller
     }
 
     public function update(Request $request, $id)
-{
-    $eszkoz = Eszkozok::find($id);
-    if (!$eszkoz) {
-        return response()->json(['error' => 'Device not found'], 404);
+    {
+        $eszkoz = Eszkozok::find($id);
+        if (!$eszkoz) {
+            return response()->json(['error' => 'Device not found'], 404);
+        }
+        $eszkoz->update($request->only(['naptarErtesites', 'kozlemenyErtesites']));
+
+        return response()->json(['message' => 'Updated successfully']);
     }
-
-    $eszkoz->update([
-        'naptarErtesites' => $request->input('naptarErtesites'),
-        'kozlemenyErtesites' => $request->input('kozlemenyErtesites'),
-    ]);
-
-    return response()->json(['message' => 'Updated successfully']);
-}
 }
