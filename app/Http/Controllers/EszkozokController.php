@@ -62,25 +62,26 @@ class EszkozokController extends Controller
 
 public function update(Request $request, $id)
 {
+    // Use device_id to find the record
     $eszkoz = Eszkozok::where('device_id', $id)->first();
+
     if (!$eszkoz) {
         return response()->json(['error' => 'Device not found'], 404);
     }
 
-    // ✅ Validate all fields including device & os
+    // Only update what is sent; device & os optional
     $validated = $request->validate([
         'naptarErtesites' => 'boolean|nullable',
         'kozlemenyErtesites' => 'boolean|nullable',
         'device' => 'nullable|string|max:255',
         'os' => 'nullable|string|max:255',
-        'fcm_token' => 'nullable|string|max:512',
     ]);
 
     $eszkoz->update($validated);
 
     return response()->json([
         'message' => 'Updated successfully',
-        'data' => $eszkoz
+        'data' => $eszkoz,
     ]);
 }
 
