@@ -60,27 +60,22 @@ class EszkozokController extends Controller
         return response()->json(['success' => true]);
     }
 
-   public function update(Request $request, $id)
+  public function update(Request $request, $id)
 {
     $eszkoz = Eszkozok::find($id);
     if (!$eszkoz) {
         return response()->json(['error' => 'Device not found'], 404);
     }
 
-    // ✅ Validation: device & os are optional
-    $validated = $request->validate([
-        'naptarErtesites' => 'boolean|nullable',
-        'kozlemenyErtesites' => 'boolean|nullable',
-        'device' => 'nullable|string|max:255',
-        'os' => 'nullable|string|max:255',
-    ]);
-
-    // ✅ Update only the provided fields
-    $eszkoz->update($validated);
+    // Only update the two fields, ignore device & os
+    $eszkoz->update($request->only([
+        'naptarErtesites',
+        'kozlemenyErtesites',
+    ]));
 
     return response()->json([
         'message' => 'Updated successfully',
-        'data' => $eszkoz, // 🔥 send updated values back to Flutter
+        'data' => $eszkoz,
     ]);
 }
 
