@@ -45,32 +45,30 @@ class KozlemenyController extends Controller
             'created' => $user->teljes_nev,
         ]);
 
-        // 🔔 Handle notifications
-        if ($request->input('ertesites')) {
-    // Fetch all FCM tokens for devices with kozlemenyErtesites = true
-    $tokens = Eszkozok::where('kozlemenyErtesites', true)
-        ->whereNotNull('fcm_token')
-        ->pluck('fcm_token')
-        ->toArray();
+    if ($request->input('ertesites')) {
+        $tokens = Eszkozok::where('kozlemenyErtesites', true)
+            ->whereNotNull('fcm_token')
+            ->pluck('fcm_token')
+            ->toArray();
 
-    if (empty($tokens)) {
-        Log::warning('No devices with kozlemenyErtesites enabled.');
-    } else {
-        try {
-            $firebase = app(FirebaseService::class);
-            $firebase->sendNotification(
-                $tokens,
-                $request->input('title'),
-                $request->input('description') ?? ''
-            );
-            Log::info('Firebase notification process completed.');
-        } catch (\Exception $e) {
-            Log::error("❌ Exception while sending notification: {$e->getMessage()}");
+        if (empty($tokens)) {
+            Log::warning('No devices with kozlemenyErtesites enabled.');
+        } else {
+            try {
+                $firebase = app(FirebaseService::class);
+                $firebase->sendNotification(
+                    $tokens,
+                    $request->input('title'),
+                    $request->input('description') ?? ''
+                );
+                Log::info('Firebase notification process completed.');
+            } catch (\Exception $e) {
+                Log::error("❌ Exception while sending notification: {$e->getMessage()}");
+            }
         }
     }
-}
 
-        return redirect('/dashboard/kozlemeny')->with('success', 'Esemény sikeresen mentve!');
+    return redirect('/dashboard/kozlemeny')->with('success', 'Esemény sikeresen mentve!');
     }
 
     

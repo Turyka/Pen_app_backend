@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\Naptar;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Eszkozok;
+use App\Services\FirebaseService;
+use Illuminate\Support\Facades\Log;
 
 class NaptarController extends Controller
 {
@@ -51,6 +54,29 @@ class NaptarController extends Controller
             'created' => $user->teljes_nev,
             'ertesites' => $request->input('ertesites'),
         ]);
+
+        if ($request->input('ertesites')) {
+        $tokens = Eszkozok::where('naptarErtesites', true)
+            ->whereNotNull('fcm_token')
+            ->pluck('fcm_token')
+            ->toArray();
+
+        if (empty($tokens)) {
+            Log::warning('No devices with naptarErtesites enabled.');
+        } else {
+            try {
+                $firebase = app(FirebaseService::class);
+                $firebase->sendNotification(
+                    $tokens,
+                    "Új bejegyzés a naptárban",
+                    "{$request->input('title')} - {$request->input('date')} {$request->input('start_time')}"
+                );
+                Log::info('Firebase notification process completed.');
+            } catch (\Exception $e) {
+                Log::error("❌ Exception while sending notification: {$e->getMessage()}");
+            }
+        }
+    }
 
         return redirect('/dashboard/naptar')->with('success', 'Esemény sikeresen mentve!');
     }
