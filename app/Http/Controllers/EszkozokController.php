@@ -62,20 +62,17 @@ class EszkozokController extends Controller
 
   public function update(Request $request, $id)
 {
-    $eszkoz = Eszkozok::find($id);
+    $eszkoz = Eszkozok::where('device_id', $id)->first();
     if (!$eszkoz) {
         return response()->json(['error' => 'Device not found'], 404);
     }
 
-    // Only update the two fields, ignore device & os
-    $eszkoz->update($request->only([
-        'naptarErtesites',
-        'kozlemenyErtesites',
-    ]));
+    // Only update the flags
+    $eszkoz->update($request->only(['naptarErtesites', 'kozlemenyErtesites']));
 
     return response()->json([
         'message' => 'Updated successfully',
-        'data' => $eszkoz,
+        'data' => $eszkoz
     ]);
 }
 
