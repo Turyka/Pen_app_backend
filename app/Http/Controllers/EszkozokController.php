@@ -11,7 +11,7 @@ class EszkozokController extends Controller
     {
         $devices = Eszkozok::orderBy('created_at', 'desc')->get();
         $napi = Napilogin::orderBy('created_at', 'desc')->get();
-        dd($napi);
+        dd($devices);
     return view('eszkozok', compact('devices'));
     }
 
