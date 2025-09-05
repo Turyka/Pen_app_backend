@@ -35,7 +35,7 @@
             border-radius: 1rem;
             box-shadow: 0 15px 35px rgba(0,0,0,0.6);
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
         }
 
         h1 {
@@ -57,42 +57,30 @@
         select,
         textarea {
             width: 100%;
-            padding: 0.75rem;
+            padding: 0.85rem 1rem;
             border: 1px solid var(--border);
             border-radius: 0.5rem;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
             font-size: 1rem;
+            line-height: 1.5;
             background-color: var(--card);
             color: var(--text);
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        /* Keep Firefox native icons visible */
-        input[type="time"],
-        input[type="date"] {
-            appearance: auto; 
-            -moz-appearance: auto;
-            -webkit-appearance: auto;
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+            overflow-y: auto;
+            font-family: "Segoe UI", sans-serif;
         }
 
         input:focus,
         select:focus,
         textarea:focus {
             border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
             outline: none;
-        }
-
-        .time-group {
-            display: flex;
-            gap: 1rem;
-        }
-
-        .time-group input {
-            flex: 1;
-        }
-
-        select option {
-            background-color: var(--card);
-            color: var(--text);
         }
 
         button {
@@ -122,6 +110,65 @@
         }
 
         .error ul { margin: 0; padding-left: 1.2rem; }
+
+        /* Toggle switch */
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .toggle-group label {
+            margin: 0 0 0 0.75rem;
+            font-size: 1rem;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--border);
+            transition: .3s;
+            border-radius: 26px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        .switch input:checked + .slider {
+            background-color: var(--accent);
+        }
+
+        .switch input:checked + .slider:before {
+            transform: translateX(24px);
+        }
     </style>
     <script>
     const eventTypeSelect = document.getElementById('event_type');
