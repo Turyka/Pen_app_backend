@@ -21,7 +21,7 @@
         </span>
         @elseif($naptar->status == "Elmarad")
         <span class="px-2 py-1 font-semibold leading-tight text-red-700 bg-red-100 rounded-full dark:text-red-100 dark:bg-red-700">
-            Törölve
+            Elmarad
           </span>
           @elseif($naptar->status == "Lezárt")
           <span class="px-2 py-1 font-semibold leading-tight text-gray-700 bg-gray-100 rounded-full dark:text-gray-100 dark:bg-gray-700">

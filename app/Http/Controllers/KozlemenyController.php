@@ -81,6 +81,7 @@ class KozlemenyController extends Controller
 
     public function edit(Kozlemeny $kozlemeny)
     {
+        $kozlemeny = auth()->Auth::user()->kozlemeny;
         return view('kozlemeny_edit', compact('kozlemeny'));
     }
 
