@@ -199,6 +199,16 @@
             <label for="description">Leírás</label>
             <textarea name="description"  id="description" rows="4">{{ old('description', $naptar->description ?? '') }}</textarea>
 
+            <div class="toggle-group">
+                <input type="hidden" name="ertesites" value="0">
+
+                <label class="switch">
+                    <input type="checkbox" name="ertesites" id="ertesites" value="1">
+                    <span class="slider"></span>
+                </label>
+                <label for="ertesites"> Legyen App Értesítés be / ki</label>
+            </div>
+
             <button type="submit">Mentés</button>
         </form>
     </div>
