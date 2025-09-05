@@ -56,27 +56,27 @@ class NaptarController extends Controller
         ]);
 
         if ($request->input('ertesites')) {
-        $tokens = Eszkozok::where('naptarErtesites', true)
-            ->whereNotNull('fcm_token')
-            ->pluck('fcm_token')
-            ->toArray();
+            $tokens = Eszkozok::where('naptarErtesites', true)
+                ->whereNotNull('fcm_token')
+                ->pluck('fcm_token')
+                ->toArray();
 
-        if (empty($tokens)) {
-            Log::warning('No devices with naptarErtesites enabled.');
-        } else {
-            try {
-                $firebase = app(FirebaseService::class);
-                $firebase->sendNotification(
-                    $tokens,
-                    "Új bejegyzés a naptárban",
-                    "{$request->input('title')} - {$request->input('date')} {$request->input('start_time')}"
-                );
-                Log::info('Firebase notification process completed.');
-            } catch (\Exception $e) {
-                Log::error("❌ Exception while sending notification: {$e->getMessage()}");
+            if (empty($tokens)) {
+                Log::warning('No devices with naptarErtesites enabled.');
+            } else {
+                try {
+                    $firebase = app(FirebaseService::class);
+                    $firebase->sendNotification(
+                        $tokens,
+                        "Új bejegyzés a naptárban",
+                        "{$request->input('title')} - {$request->input('date')} {$request->input('start_time')}"
+                    );
+                    Log::info('Firebase notification process completed.');
+                } catch (\Exception $e) {
+                    Log::error("❌ Exception while sending notification: {$e->getMessage()}");
+                }
             }
         }
-    }
 
         return redirect('/dashboard/naptar')->with('success', 'Esemény sikeresen mentve!');
     }
@@ -127,6 +127,30 @@ class NaptarController extends Controller
             'description' => $request->input('description'),
             'edited' => $user->teljes_nev,
         ]);
+
+        if ($request->input('ertesites') && $request->input('status') == "Elmarad" ) {
+            $tokens = Eszkozok::where('naptarErtesites', true)
+                ->whereNotNull('fcm_token')
+                ->pluck('fcm_token')
+                ->toArray();
+
+            if (empty($tokens)) {
+                Log::warning('No devices with naptarErtesites enabled.');
+            } else {
+                try {
+                    $firebase = app(FirebaseService::class);
+                    $firebase->sendNotification(
+                        $tokens,
+                        "❌ {$request->input('title')} Esemény elmarad",
+                        ""
+                    );
+                    Log::info('Firebase notification process completed.');
+                } catch (\Exception $e) {
+                    Log::error("❌ Exception while sending notification: {$e->getMessage()}");
+                }
+            }
+        }
+        
 
         return redirect('/dashboard/naptar')->with('success', 'Esemény sikeresen frissítve!');
     }
