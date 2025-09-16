@@ -52,7 +52,22 @@ class KezdoController extends Controller
     $naptar_szamok = Naptar::count();
     $eszkozok_szamok = Eszkozok::count();
     $hir_Szamok = Hir::count();
-$eszkozok = Eszkozok::select( DB::raw("COALESCE(NULLIF(TRIM(SPLIT_PART(device, ' ', 1)), ''), 'Unknown') AS brand"), DB::raw("COUNT(*) as count") ) ->groupBy('brand') ->get();
+    $kozlemenyek_szama = Kozlemeny::count();
+$driver = DB::getDriverName();
+
+if ($driver === 'pgsql') {
+    $brandExpr = "COALESCE(NULLIF(TRIM(SPLIT_PART(device, ' ', 1)), ''), 'Unknown')";
+} else {
+    // mysql
+    $brandExpr = "COALESCE(NULLIF(TRIM(SUBSTRING_INDEX(device, ' ', 1)), ''), 'Unknown')";
+}
+
+$eszkozok = Eszkozok::select(
+        DB::raw("$brandExpr AS brand"),
+        DB::raw("COUNT(*) as count")
+    )
+    ->groupBy('brand')
+    ->get();
     $tz = 'Europe/Budapest'; // vagy config('app.timezone')
 $start = Carbon::now($tz)->subDays(6)->startOfDay();
 $end   = Carbon::now($tz)->endOfDay();
@@ -76,7 +91,7 @@ for ($date = $start->copy(); $date <= $end; $date->addDay()) {
     ];
 }
 
-    return view('dashboard.index', compact('users','naptar_szamok','eszkozok_szamok','hir_Szamok','eszkozok','napilogin'));
+    return view('dashboard.index', compact('users','naptar_szamok','eszkozok_szamok','hir_Szamok','eszkozok','napilogin','kozlemenyek_szama'));
     }
 
     public function naptar()
