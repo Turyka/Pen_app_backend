@@ -12,7 +12,11 @@ class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
-
+    
+    public function kozlemeny()
+    {
+        return $this->hasMany(\App\Models\Kozlemeny::class, 'user_id');
+    }
     /**
      * The attributes that are mass assignable.
      *

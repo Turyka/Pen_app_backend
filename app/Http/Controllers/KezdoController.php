@@ -103,7 +103,11 @@ for ($date = $start->copy(); $date <= $end; $date->addDay()) {
 
     public function kozlemeny()
     {
-    $kozlemenyek = Kozlemeny::orderBy('created_at', 'DESC')->paginate(10);
+       
+     $kozlemenyek = auth()->user()
+        ->kozlemeny()   // <-- note the parentheses to keep it as a query
+        ->orderBy('created_at', 'DESC')
+        ->paginate(10);
 
     return view('dashboard.kozlemeny', compact('kozlemenyek'));
     }

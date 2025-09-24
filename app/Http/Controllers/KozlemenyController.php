@@ -43,6 +43,7 @@ class KozlemenyController extends Controller
             'description' => $request->input('description'),
             'ertesites' => $request->input('ertesites'),
             'created' => $user->teljes_nev,
+            'user_id' => $user->id,
         ]);
 
     if ($request->input('ertesites')) {
@@ -81,7 +82,9 @@ class KozlemenyController extends Controller
 
     public function edit(Kozlemeny $kozlemeny)
     {
-        $kozlemeny = auth()->Auth::user()->kozlemeny;
+        if ($kozlemeny->user_id !== auth()->user()->id) {
+    abort(403, 'Hozzáférés megtagadva.');
+}
         return view('kozlemeny_edit', compact('kozlemeny'));
     }
 

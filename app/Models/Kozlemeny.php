@@ -12,5 +12,10 @@ class Kozlemeny extends Model
         'description',
         'ertesites',
         'created',
+        'user_id', 
     ];
+    public function user()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'user_id');
+    }
 }
