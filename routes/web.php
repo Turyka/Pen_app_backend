@@ -11,6 +11,7 @@ use App\Http\Controllers\KozlemenyController;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\KepfeltoltesController;
 
 
 // Commandok
@@ -67,6 +68,14 @@ Route::get('/dashboard/kozlemeny/{kozlemeny}/edit', [KozlemenyController::class,
 Route::put('/dashboard/kozlemeny/{kozlemeny}', [KozlemenyController::class, 'update'])->name('kozlemeny.update')->middleware('auth');
 Route::delete('/dashboard/kozlemeny/{kozlemeny}', [KozlemenyController::class, 'destroy'])->name('kozlemeny.destroy')->middleware('auth');
 
+
+
+Route::get('/dashboard/kepfeltoltes', [KepfeltoltesController::class, 'index'])->middleware('auth');
+Route::get('/kepfeltoltes/keszit', [KepfeltoltesController::class, 'create'])->name('kepfeltoltes.create')->middleware('auth');
+Route::post('/kepfeltoltes/store', [KepfeltoltesController::class, 'store'])->name('kepfeltoltes.store')->middleware('auth');
+Route::get('/dashboard/kepfeltoltes/{kepfeltoltes}/edit', [KepfeltoltesController::class, 'edit'])->name('kepfeltoltes.edit')->middleware('auth');
+Route::post('/kepfeltoltes/destroy', [KepfeltoltesController::class, 'destroy'])->name('kepfeltoltes.destroy')->middleware('auth');
+Route::put('/dashboard/kepfeltoltes/{kepfeltoltes}', [KepfeltoltesController::class, 'update'])->name('kepfeltoltes.update')->middleware('auth');
 
 
 

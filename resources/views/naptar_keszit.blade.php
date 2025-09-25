@@ -257,15 +257,9 @@ body.dark h1 {
       <label for="event_type">Esemény típusa</label>
       <select name="event_type" id="event_type" required>
         <option value="" disabled selected>Válassz eseménytípust</option>
-        <option value="Sorpong">Sőrpong</option>
-        <option value="Kvizest">Kvízest</option>
-        <option value="Kocsmatura">Kocsmatura</option>
-        <option value="Szuletesnap">Születésnap</option>
-        <option value="Pingpong-verseny">Pingpong-verseny</option>
-        <option value="Kocamuri">Kocamuri</option>
-        <option value="Sportnapok">Sportnapok</option>
-        <option value="Eloadas">Előadás</option>
-        <option value="egyebb">Egyéb</option>
+        @foreach($kepfeltoltes as $kep)
+         <option value="{{ $kep->event_type }}">{{ $kep->event_type }}</option>
+        @endforeach
       </select>
 
       <label for="description">Leírás</label>

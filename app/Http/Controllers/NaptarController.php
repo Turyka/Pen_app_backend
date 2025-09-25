@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Naptar;
+use App\Models\Kepfeltoltes;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Eszkozok;
@@ -15,7 +16,8 @@ class NaptarController extends Controller
     // 📅 Naptár létrehozása (GET)
     public function keszit()
     {
-        return view('naptar_keszit');
+          $kepfeltoltes = Kepfeltoltes::all(); 
+    return view('naptar_keszit', compact('kepfeltoltes'));
     }
 
     // 📩 Naptár mentése (POST)
@@ -157,36 +159,28 @@ class NaptarController extends Controller
 
     // 🌐 Naptár API (JSON)
     public function naptarAPI(Request $request)
-    {
-       
-        if ($request->query('titkos') !== env('API_SECRET')) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-
-        $events = Naptar::all()->map(function ($event) {
-            $baseName = strtolower(str_replace(' ', '', $event->event_type));
-            $pngPath = public_path("img/{$baseName}.png");
-            $jpgPath = public_path("img/{$baseName}.jpg");
-
-            // 🖼️ Kép hozzáadása az eseménytípushoz, ha van ilyen fájl
-            if (file_exists($pngPath)) {
-                $event->event_type = asset("img/{$baseName}.png");
-            } elseif (file_exists($jpgPath)) {
-                $event->event_type = asset("img/{$baseName}.jpg");
-            }
-
-            return [
-                'id' => $event->id,
-                'title' => $event->title,
-                'date' => $event->date,
-                'start_time' => substr($event->start_time, 0, 5),
-                'end_time' => substr($event->end_time, 0, 5),
-                'event_type' => $event->event_type,
-                'description' => $event->description,
-                'status' => $event->status
-            ];
-        });
-
-        return response()->json($events);
+{
+    if ($request->query('titkos') !== env('API_SECRET')) {
+        return response()->json(['error' => 'Unauthorized'], 401);
     }
+
+    $events = Naptar::all()->map(function ($event) {
+        // Try to find a matching image in kepfeltoltes table
+        $kep = \App\Models\Kepfeltoltes::where('event_type', $event->event_type)->first();
+
+        return [
+            'id' => $event->id,
+            'title' => $event->title,
+            'date' => $event->date,
+            'start_time' => substr($event->start_time, 0, 5),
+            'end_time' => substr($event->end_time, 0, 5),
+            'event_type' => $event->event_type, // keep the name
+            'event_type_img' => $kep ? asset($kep->event_type_img) : null, // ✅ from DB
+            'description' => $event->description,
+            'status' => $event->status
+        ];
+    });
+
+    return response()->json($events);
+}
 }
