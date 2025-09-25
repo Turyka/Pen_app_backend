@@ -2,7 +2,7 @@
 <html :class="{ 'theme-dark': dark }" x-data="data()" lang="HU">
 
 <head>
-  <title>Közlemény</title>
+  <title>Képfeltöltés</title>
   @include('dashboard.Parts._head')
 </head>
 
