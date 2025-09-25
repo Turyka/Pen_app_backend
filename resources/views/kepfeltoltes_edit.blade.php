@@ -102,9 +102,9 @@
       <div class="preview">
         <p>📸 Jelenlegi kép:</p>
         @if($kepfeltoltes->event_type_img)
-          <img src="{{ asset('storage/' . $kepfeltoltes->event_type_img) }}" alt="Aktuális kép">
+            <img src="{{ asset($kepfeltoltes->event_type_img) }}" alt="Aktuális kép">
         @else
-          <p><i>Nincs feltöltve kép</i></p>
+            <p><i>Nincs feltöltve kép</i></p>
         @endif
       </div>
 
