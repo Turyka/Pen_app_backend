@@ -70,11 +70,11 @@ Route::delete('/dashboard/kozlemeny/{kozlemeny}', [KozlemenyController::class, '
 
 
 
-Route::get('/dashboard/kepfeltoltes', [KepfeltoltesController::class, 'index'])->middleware('auth');
+Route::get('/dashboard/kepfeltoltes', [KepfeltoltesController::class, 'index'])->name('kepfeltoltes')->middleware('auth');
 Route::get('/kepfeltoltes/keszit', [KepfeltoltesController::class, 'create'])->name('kepfeltoltes.create')->middleware('auth');
 Route::post('/kepfeltoltes/store', [KepfeltoltesController::class, 'store'])->name('kepfeltoltes.store')->middleware('auth');
 Route::get('/dashboard/kepfeltoltes/{kepfeltoltes}/edit', [KepfeltoltesController::class, 'edit'])->name('kepfeltoltes.edit')->middleware('auth');
-Route::post('/kepfeltoltes/destroy', [KepfeltoltesController::class, 'destroy'])->name('kepfeltoltes.destroy')->middleware('auth');
+Route::delete('/kepfeltoltes/destroy/{kepfeltoltes}', [KepfeltoltesController::class, 'destroy'])->name('kepfeltoltes.destroy')->middleware('auth');
 Route::put('/dashboard/kepfeltoltes/{kepfeltoltes}', [KepfeltoltesController::class, 'update'])->name('kepfeltoltes.update')->middleware('auth');
 
 
