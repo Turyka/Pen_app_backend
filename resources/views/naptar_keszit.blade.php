@@ -254,6 +254,15 @@ body.dark h1 {
         </div>
       </div>
 
+      <label for="link">Link (Csak link, nem kötelező)</label>
+<input 
+  type="url" 
+  name="link" 
+  id="link" 
+  placeholder="Pl: google form link, eseményre való link"
+  pattern="https?://.+" 
+/>
+
       <label for="event_type">Esemény típusa</label>
       <select name="event_type" id="event_type" required>
         <option value="" disabled selected>Válassz eseménytípust</option>

@@ -220,18 +220,24 @@
                     <input type="time" name="end_time" id="end_time" value="{{ old('end_time', isset($naptar) ? \Carbon\Carbon::createFromFormat('H:i:s', $naptar->end_time)->format('H:i') : '') }}" required>
                 </div>
             </div>
+
+            <label for="link">Link (Csak link, nem kötelező)</label>
+            <input 
+            value="{{ old('link', $naptar->link ?? '') }}"
+            type="url" 
+            name="link" 
+            id="link" 
+            placeholder="Pl: google form link, eseményre való link"
+            pattern="https?://.+" 
+            />
+
            <label for="event_type">Esemény típusa</label>
+           
             <select name="event_type" id="event_type"   required>
                 <option value="{{ old('event_type', $naptar->event_type ?? '') }}" selected>{{ $naptar->event_type}}</option>
-                <option value="Sorpong">Sőrpong</option>
-                <option value="Kvizest">Kvízest</option>
-                <option value="Kocsmatura">Kocsmatura</option>
-                <option value="Szuletesnap">Születésnap</option>
-                <option value="Pingpong-verseny">Pingpong-verseny</option>
-                <option value="Kocamuri">Kocamuri</option>
-                <option value="Sportnapok">Sportnapok</option>
-                <option value="Eloadas">Előadás</option>
-                <option value="egyebb">Egyéb</option>
+                @foreach($kepfeltoltes as $kep)
+                    <option value="{{ $kep->event_type }}">{{ $kep->event_type }}</option>
+                @endforeach
             </select>
 
             <label for="status">Státusz:</label>

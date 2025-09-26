@@ -31,6 +31,7 @@ class NaptarController extends Controller
             'event_type' => 'required|string|max:255',
             'description' => 'nullable|string',
             'ertesites' => 'boolean',
+            'link' => "nullable|string"
         ]);
 
         if ($validator->fails()) {
@@ -55,6 +56,7 @@ class NaptarController extends Controller
             'status' => 'Aktív',
             'created' => $user->teljes_nev,
             'ertesites' => $request->input('ertesites'),
+            'link' => $request->input('link'),
         ]);
 
         if ($request->input('ertesites')) {
@@ -86,7 +88,9 @@ class NaptarController extends Controller
     // ✏️ Naptár szerkesztése (GET)
     public function edit(Naptar $naptar)
     {
-        return view('naptar_edit', compact('naptar'));
+        $kepfeltoltes = Kepfeltoltes::all(); 
+        return view('naptar_edit', compact('naptar','kepfeltoltes'));
+        
     }
 
     public function destroy(Naptar $naptar)
@@ -107,6 +111,7 @@ class NaptarController extends Controller
             'event_type' => 'required|string|max:255',
             'status' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'link' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -128,6 +133,7 @@ class NaptarController extends Controller
             'status' => $request->input('status'),
             'description' => $request->input('description'),
             'edited' => $user->teljes_nev,
+            'link' => $request->input('link'),
         ]);
 
         if ($request->input('ertesites') && $request->input('status') == "Elmarad" ) {
@@ -177,7 +183,8 @@ class NaptarController extends Controller
             'event_type' => $event->event_type, // keep the name
             'event_type_img' => $kep ? asset($kep->event_type_img) : null, // ✅ from DB
             'description' => $event->description,
-            'status' => $event->status
+            'status' => $event->status,
+            'link' => $event->link,
         ];
     });
 
