@@ -19,7 +19,7 @@ return new class extends Migration
             $table->time('end_time');
             $table->string('event_type');
             $table->string('status');
-            $table->string('link');
+            $table->string('link')->nullable();
             $table->string('created');
             $table->boolean('ertesites');
             $table->string('edited')->nullable();

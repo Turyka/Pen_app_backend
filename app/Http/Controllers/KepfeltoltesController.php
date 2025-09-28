@@ -21,11 +21,11 @@ class KepfeltoltesController extends Controller
         return view('kepfeltoltes_keszit');
     }
 
-   public function store(Request $request)
-{
+    public function store(Request $request)
+    {
     $request->validate([
         'event_type' => 'required|string|max:255',
-        'event_type_img' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+        'event_type_img' => 'required|image|mimes:jpg,jpeg,png|max:5120',
     ]);
 
     // Generate a unique filename
@@ -41,7 +41,7 @@ class KepfeltoltesController extends Controller
     ]);
 
     return redirect("/dashboard/kepfeltoltes")->with('success', 'Eseménytípus sikeresen feltöltve!');
-}
+    }
 
     public function edit(Kepfeltoltes $kepfeltoltes)
     {
@@ -55,7 +55,7 @@ class KepfeltoltesController extends Controller
 
     $request->validate([
         'event_type' => 'required|string|max:255',
-        'event_type_img' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        'event_type_img' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
     ]);
 
     // Név frissítése
