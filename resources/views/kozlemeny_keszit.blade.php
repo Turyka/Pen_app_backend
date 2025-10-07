@@ -66,7 +66,6 @@
       margin-bottom: 1.5rem;
       background: var(--accent-gradient);
       -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
     }
 
     label {
@@ -257,6 +256,13 @@
 
       <label for="title">Cím</label>
       <input type="text" name="title" id="title" placeholder="Milyen közlemény..." required>
+
+      <label for="type">Esemény típusa</label>
+      <select name="type" id="type" required>
+        <option value="" disabled selected>Válassz ki egy közlemény tipust</option>)
+         <option value="0">Közösség</option>
+      </select>
+
 
       <label for="description">Leírás</label>
       <textarea name="description" id="description" placeholder="Közlemény Leírása..."></textarea>

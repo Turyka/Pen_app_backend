@@ -24,6 +24,7 @@ class KozlemenyController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'string|nullable',
             'ertesites' => 'boolean',
+            'type' => 'integer',
         ]);
 
         if ($validator->fails()) {
@@ -42,6 +43,7 @@ class KozlemenyController extends Controller
             'title' => $request->input('title'),
             'description' => $request->input('description'),
             'ertesites' => $request->input('ertesites'),
+            'type' => $request->input('type'),
             'created' => $user->teljes_nev,
             'user_id' => $user->id,
         ]);
@@ -53,7 +55,7 @@ class KozlemenyController extends Controller
             ->toArray();
 
         if (empty($tokens)) {
-            Log::warning('No devices with kozlemenyErtesites enabled.');
+            Log::warning('Nincs ilyen token egy telfonon se');
         } else {
             try {
                 $firebase = app(FirebaseService::class);
@@ -95,6 +97,7 @@ class KozlemenyController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'string',
             'ertesites' => 'boolean',
+            'type' => 'integer',
         ]);
 
         if ($validator->fails()) {
@@ -112,6 +115,7 @@ class KozlemenyController extends Controller
             'title' => $request->input('title'),
             'description' => $request->input('description'),
             'ertesites' => $request->input('ertesites'),
+            'type' => $request->input('type'),
             'created' => $user->teljes_nev,
         ]);
 

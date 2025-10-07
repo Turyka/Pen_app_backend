@@ -11,6 +11,7 @@ class Kozlemeny extends Model
         'title',
         'description',
         'ertesites',
+        'type',
         'created',
         'user_id', 
     ];
