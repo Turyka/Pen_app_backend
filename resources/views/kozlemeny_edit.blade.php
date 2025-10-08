@@ -56,6 +56,41 @@
       transition: background 0.3s ease, color 0.3s ease;
     }
 
+
+
+        input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 0.85rem;
+      margin-bottom: 1.5rem;
+      font-size: 1rem;
+      background-color: rgba(255,255,255,0.05);
+      color: var(--text);
+      transition: all 0.25s ease;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(37,99,235,0.3);
+      outline: none;
+    }
+
+        body.dark input,
+body.dark select,
+body.dark textarea {
+    background-color: rgba(30,41,59,0.9); /* sötétebb hátteret adunk */
+    color: var(--text); /* fehér marad */
+}
+body.dark h1 {
+    -webkit-text-fill-color: var(--text); /* gradient helyett fehér, így az emoji is látszik */
+}
+
+
     h1 {
       text-align: center;
       font-size: 2rem;
@@ -220,6 +255,15 @@
 
       <label for="title">Cím</label>
       <input type="text" name="title" id="title" value="{{ old('title', $kozlemeny->title) }}" required>
+
+      <label for="type">Esemény típusa</label>
+      <select name="type" id="type" required>
+        <option value="{{ old('type', $kozlemeny->type ?? '') }}" disabled selected>$kozlemeny->type</option>
+         <option value="0">Fontos </option>
+         <option value="1">Közösség / Esemény</option>
+         <option value="2">Oktatás</option>
+         <option value="3">Kollégium</option>
+      </select>
 
       <label for="description">Leírás</label>
       <textarea name="description" id="description">{{ old('description', $kozlemeny->description) }}</textarea>

@@ -134,6 +134,7 @@ class KozlemenyController extends Controller
             'title' => $event->title,
             'description' => $event->description,
             'ertesites' => $event->ertesites,
+            'type' => $event->type,
             'created' => $event->created,
             'updated_at'  => $event->updated_at ? $event->updated_at->format('Y-m-d H:i:s') : null,
             ];
