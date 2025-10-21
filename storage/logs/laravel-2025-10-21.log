@@ -1,0 +1,32 @@
+[2025-10-21 19:05:37] staging.ERROR: No arguments expected for "migrate" command, got "refresh". {"exception":"[object] (Symfony\\Component\\Console\\Exception\\RuntimeException(code: 0): No arguments expected for \"migrate\" command, got \"refresh\". at E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\symfony\\console\\Input\\ArgvInput.php:199)
+[stacktrace]
+#0 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\symfony\\console\\Input\\ArgvInput.php(92): Symfony\\Component\\Console\\Input\\ArgvInput->parseArgument('refresh')
+#1 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\symfony\\console\\Input\\ArgvInput.php(77): Symfony\\Component\\Console\\Input\\ArgvInput->parseToken('refresh', true)
+#2 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\symfony\\console\\Input\\Input.php(53): Symfony\\Component\\Console\\Input\\ArgvInput->parse()
+#3 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\symfony\\console\\Command\\Command.php(276): Symfony\\Component\\Console\\Input\\Input->bind(Object(Symfony\\Component\\Console\\Input\\InputDefinition))
+#4 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\laravel\\framework\\src\\Illuminate\\Console\\Command.php(182): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))
+#5 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\symfony\\console\\Application.php(1110): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#6 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\symfony\\console\\Application.php(359): Symfony\\Component\\Console\\Application->doRunCommand(Object(Illuminate\\Database\\Console\\Migrations\\MigrateCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#7 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\symfony\\console\\Application.php(194): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#8 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(198): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#9 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\artisan(35): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#10 {main}
+"} 
+[2025-10-21 19:05:43] staging.ERROR: Command "migrate_refresh" is not defined.
+
+Did you mean one of these?
+    migrate:fresh
+    migrate:refresh
+    migrate:reset {"exception":"[object] (Symfony\\Component\\Console\\Exception\\CommandNotFoundException(code: 0): Command \"migrate_refresh\" is not defined.
+
+Did you mean one of these?
+    migrate:fresh
+    migrate:refresh
+    migrate:reset at E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\symfony\\console\\Application.php:743)
+[stacktrace]
+#0 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\symfony\\console\\Application.php(301): Symfony\\Component\\Console\\Application->find('migrate_refresh')
+#1 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\symfony\\console\\Application.php(194): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#2 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(198): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#3 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\artisan(35): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#4 {main}
+"} 

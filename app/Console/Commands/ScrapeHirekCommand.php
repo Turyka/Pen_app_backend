@@ -44,7 +44,9 @@ class ScrapeHirekCommand extends Command
             $date = $dateNode->length ? $dateNode[0]->getAttribute('datetime') : null;
 
             // Find existing news with same title
-            $mar_van = Hir::where('title', $title)->first();
+            $mar_van = Hir::where('title', $title)
+              ->where('date', $date)
+              ->first();
 
             if ($mar_van) {
                 // If both image and date are the same → skip

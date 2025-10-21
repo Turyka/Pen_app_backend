@@ -15,7 +15,8 @@ return new class extends Migration
            $table->id();
         $table->string('title');
         $table->text('image')->nullable();
-        $table->text('link')->unique(); // prevent duplicates
+        $table->text('link')->unique();
+        $table->string('date')->nullable();
         $table->timestamps();
         });
     }

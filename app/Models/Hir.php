@@ -11,5 +11,6 @@ class Hir extends Model
         'title',
         'image',
         'link',
+        'date'
     ];
 }
