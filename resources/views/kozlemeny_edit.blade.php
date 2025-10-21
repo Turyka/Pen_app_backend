@@ -258,7 +258,7 @@ body.dark h1 {
 
       <label for="type">Esemény típusa</label>
       <select name="type" id="type" required>
-        <option value="{{ old('type', $kozlemeny->type ?? '') }}" disabled selected>$kozlemeny->type</option>
+        <option value="{{ old('type', $kozlemeny->type ?? '') }}" disabled selected>{{$kozlemeny->type}}</option>
          <option value="0">Fontos </option>
          <option value="1">Közösség / Esemény</option>
          <option value="2">Oktatás</option>

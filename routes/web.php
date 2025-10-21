@@ -23,7 +23,7 @@ Route::get('/', function () {
 
 Route::post('/login', [KezdoController::class, 'authenticate'])
     ->name('login_store')
-    ->middleware('throttle:5,1'); 
+    ->middleware('throttle:10,1'); 
 
 Route::post('/logout', function () {
     Auth::logout();

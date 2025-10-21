@@ -18,7 +18,7 @@ class ScrapeHirekCommand extends Command
         $response = Http::get('https://pen.uni-pannon.hu/hirek/');
 
         if (!$response->successful()) {
-            $this->error('Sikerrtelen lehuzás');
+            $this->error('Sikertelen lehúzás');
             return Command::FAILURE;
         }
 
@@ -33,29 +33,32 @@ class ScrapeHirekCommand extends Command
         $added = 0;
         $cardsArray = iterator_to_array($cards);
         $cardsArray = array_reverse($cardsArray);
+
         foreach ($cardsArray as $card) {
             $titleNode = $xpath->query(".//h3[contains(@class, 'dpt-title')]/a", $card);
             $title = $titleNode->length ? trim($titleNode[0]->nodeValue) : '';
             $link = $titleNode->length ? $titleNode[0]->getAttribute('href') : '';
             $imgNode = $xpath->query(".//img", $card);
             $image = $imgNode->length ? $imgNode[0]->getAttribute('data-dpt-src') : '';
+            $dateNode = $xpath->query(".//div[contains(@class, 'dpt-date')]/time", $card);
+            $date = $dateNode->length ? $dateNode[0]->getAttribute('datetime') : null;
 
-            
-            
+            // Find existing news with same title
             $mar_van = Hir::where('title', $title)->first();
 
             if ($mar_van) {
-                // If image is the same, skip
-                if ($mar_van->image === $image) {
+                // If both image and date are the same → skip
+                if ($mar_van->image === $image && $mar_van->date === $date) {
                     continue;
                 }
-        
-                // If image is different, update it
+
+                // If date or image differ → update them
                 $mar_van->update([
                     'image' => $image,
+                    'date' => $date,
                 ]);
-        
-                $this->info("kép updatelve $image");
+
+                $this->info("Frissítve: $title ($date)");
                 continue;
             }
 
@@ -63,11 +66,11 @@ class ScrapeHirekCommand extends Command
                 continue;
             }
 
-
             Hir::create([
                 'title' => $title,
                 'link' => $link,
                 'image' => $image,
+                'date' => $date,
             ]);
 
             $added++;
