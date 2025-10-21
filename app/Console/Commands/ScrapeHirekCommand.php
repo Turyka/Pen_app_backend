@@ -21,7 +21,7 @@ class ScrapeHirekCommand extends Command
             $this->error('Sikertelen lehúzás');
             return Command::FAILURE;
         }
-
+        
         $html = $response->body();
         $dom = new DOMDocument();
         libxml_use_internal_errors(true);

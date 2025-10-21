@@ -17,19 +17,19 @@ class DatabaseSeeder extends Seeder
     public function run()
     {
         User::create([
-            'name' => 'Gunár',
+            'name' => 'Barni',
             'teljes_nev' => 'Mike Barnabás',
             'password' => Hash::make('asd'),
             'szak' => 'GTK',
-            'titulus' => 'Referens'
+            'titulus' => 'Elnök'
         ]);
 
         User::create([
             'name' => 'Doki',
             'teljes_nev' => 'Kocsis Dominik',
             'password' => Hash::make('asd'),
-            'szak' => 'MIK (gigachad)',
-            'titulus' => 'Referens'
+            'szak' => 'MIK',
+            'titulus' => 'Képviselő'
         ]);
 
         User::create([
@@ -37,7 +37,7 @@ class DatabaseSeeder extends Seeder
             'teljes_nev' => 'Kóti Luca',
             'password' => Hash::make('asd'),
             'szak' => 'GTK',
-            'titulus' => 'Referens'
+            'titulus' => 'Elnökhelyettes'
         ]);
 
         User::create([
