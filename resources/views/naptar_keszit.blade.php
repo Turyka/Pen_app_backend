@@ -302,6 +302,8 @@ body.dark h1 {
       if (ertesitesCheckbox.checked) { infoBox.classList.add("show"); }
       else { infoBox.classList.remove("show"); }
     });
+
+    
   </script>
 </body>
 </html>
