@@ -12,6 +12,8 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\KepfeltoltesController;
+use App\Http\Controllers\DatabaseController;
+
 
 
 // Commandok
@@ -29,6 +31,9 @@ Route::post('/logout', function () {
     Auth::logout();
     return redirect('/');
 })->name('logout');
+
+Route::get('/database/backup', [DatabaseController::class, 'backup']);
+Route::get('/database/restore-newest', [DatabaseController::class, 'restoreNewest']);
 
 
 
