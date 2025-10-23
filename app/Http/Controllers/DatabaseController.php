@@ -204,83 +204,52 @@ private function generatePostgreSQLBackup()
 public function restoreNewest()
 {
     try {
-        // Temporarily disable session handling
-        config(['session.driver' => 'array']);
-
         // Initialize Cloudinary
         $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
         
-        // Get ALL backups from adatbazis folder
+        // Get the newest backup
         $result = $cloudinary->adminApi()->assets([
             'type' => 'upload',
             'prefix' => 'adatbazis',
             'resource_type' => 'raw',
-            'max_results' => 100
+            'max_results' => 1,
+            'sort_by' => [['created_at' => 'desc']]
         ]);
 
         if (empty($result['resources'])) {
-            return response()->json(['error' => 'No backups found in adatbazis folder'], 404);
+            return response()->json(['error' => 'No backups found'], 404);
         }
 
-        // Sort backups by creation date manually (newest first)
-        $backups = $result['resources'];
-        usort($backups, function($a, $b) {
-            return strtotime($b['created_at']) - strtotime($a['created_at']);
-        });
+        $backup = $result['resources'][0];
+        $downloadUrl = $backup['secure_url'];
 
-        $newestBackup = $backups[0];
-        $public_id = $newestBackup['public_id'];
-        $downloadUrl = $newestBackup['secure_url'];
-
-        // Download the SQL file
+        // Download and fix the SQL file
         $fileContent = file_get_contents($downloadUrl);
+        $fileContent = str_replace("25\\'", "25''", $fileContent); // Fix apostrophes
         
-        // Fix the escaped apostrophes in the SQL content
-        $fileContent = str_replace("25\\'", "25'", $fileContent);
+        // Execute only INSERT statements
+        $inserts = [];
+        preg_match_all('/INSERT INTO[^;]+;/', $fileContent, $inserts);
         
-        // Split SQL file into individual queries
-        $queries = array_filter(array_map('trim', 
-            preg_split('/;/', $fileContent)
-        ));
-
-        // Execute each query
-        $executedQueries = 0;
+        $successful = 0;
         $errors = [];
-
-        foreach ($queries as $query) {
-            $query = trim($query);
-            if (!empty($query) && !str_starts_with($query, '--')) {
-                try {
-                    // SKIP all table operations (DROP TABLE, CREATE TABLE)
-                    if (str_starts_with(strtoupper($query), 'DROP TABLE') || 
-                        str_starts_with(strtoupper($query), 'CREATE TABLE')) {
-                        continue; // Skip table creation/dropping completely
-                    }
-                    
-                    // Only execute INSERT statements
-                    if (str_starts_with(strtoupper($query), 'INSERT INTO')) {
-                        DB::statement($query);
-                        $executedQueries++;
-                    }
-                    // Skip everything else (ALTER, etc.)
-                    
-                } catch (\Exception $e) {
-                    // Skip duplicate key errors (data already exists)
-                    if (!str_contains($e->getMessage(), 'duplicate key') &&
-                        !str_contains($e->getMessage(), 'unique constraint')) {
-                        $errors[] = "Query failed: " . substr($query, 0, 100) . "... - " . $e->getMessage();
-                    }
+        
+        foreach ($inserts[0] as $insert) {
+            try {
+                DB::statement($insert);
+                $successful++;
+            } catch (\Exception $e) {
+                // Ignore duplicate errors, log others
+                if (!str_contains($e->getMessage(), 'duplicate')) {
+                    $errors[] = $e->getMessage();
                 }
             }
         }
 
         return response()->json([
-            'success' => 'Data inserted from backup! (Only INSERT queries executed)',
-            'backup_used' => $public_id,
-            'backup_created' => $newestBackup['created_at'],
-            'inserts_executed' => $executedQueries,
-            'total_queries' => count($queries),
-            'driver' => env('DB_CONNECTION'),
+            'success' => 'Data added from backup!',
+            'inserts_successful' => $successful,
+            'total_inserts' => count($inserts[0]),
             'errors' => $errors
         ]);
 
