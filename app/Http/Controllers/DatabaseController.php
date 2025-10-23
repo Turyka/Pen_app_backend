@@ -12,16 +12,19 @@ class DatabaseController extends Controller
 public function migrateRefresh()
 {
     try {
-        $status = Artisan::call('migrate:refresh', [
-            '--force' => true,
-            '--seed' => true
-        ]);
+        // Force drop all tables first
+        Artisan::call('db:wipe', ['--force' => true]);
+        
+        // Then run migrations and seeds
+        $migrateStatus = Artisan::call('migrate', ['--force' => true]);
+        $seedStatus = Artisan::call('db:seed', ['--force' => true]);
         
         $output = Artisan::output();
-
+        
         return response()->json([
-            'message' => 'Database migrated and seeded successfully!',
-            'status' => $status,
+            'message' => 'Database refreshed successfully!',
+            'migrate_status' => $migrateStatus,
+            'seed_status' => $seedStatus,
             'output' => $output
         ]);
     } catch (\Exception $e) {
