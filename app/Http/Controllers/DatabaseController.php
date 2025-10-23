@@ -20,7 +20,7 @@ public function migrateRefresh()
         $seedStatus = Artisan::call('db:seed', ['--force' => true]);
         
         $output = Artisan::output();
-        
+
         return response()->json([
             'message' => 'Database refreshed successfully!',
             'migrate_status' => $migrateStatus,
@@ -136,12 +136,48 @@ private function generatePostgreSQLBackup()
     foreach ($tables as $table) {
         $tableName = $table->table_name;
         
-        // Get table structure
-        $createTable = DB::select("SELECT pg_get_tabledef('{$tableName}') as create_statement");
-        $createStatement = $createTable[0]->create_statement;
-        
+        // Drop table
         $sqlContent .= "DROP TABLE IF EXISTS \"{$tableName}\" CASCADE;\n";
-        $sqlContent .= $createStatement . ";\n\n";
+        
+        // Get table structure using information_schema instead of pg_get_tabledef
+        $columns = DB::select("
+            SELECT 
+                column_name,
+                data_type,
+                is_nullable,
+                column_default,
+                character_maximum_length
+            FROM information_schema.columns 
+            WHERE table_schema = 'public' AND table_name = '{$tableName}'
+            ORDER BY ordinal_position
+        ");
+        
+        // Build CREATE TABLE statement manually
+        $sqlContent .= "CREATE TABLE \"{$tableName}\" (\n";
+        
+        $columnDefinitions = [];
+        foreach ($columns as $column) {
+            $definition = "\"{$column->column_name}\" {$column->data_type}";
+            
+            // Add length for character types
+            if ($column->character_maximum_length) {
+                $definition .= "({$column->character_maximum_length})";
+            }
+            
+            // Handle nullable
+            if ($column->is_nullable === 'NO') {
+                $definition .= " NOT NULL";
+            }
+            
+            // Handle default values
+            if ($column->column_default) {
+                $definition .= " DEFAULT {$column->column_default}";
+            }
+            
+            $columnDefinitions[] = $definition;
+        }
+        
+        $sqlContent .= implode(",\n", $columnDefinitions) . "\n);\n\n";
         
         // Get all data from the table
         $rows = DB::table($tableName)->get();
