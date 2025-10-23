@@ -17,7 +17,7 @@ use App\Http\Controllers\DatabaseController;
 
 
 // Commandok
-Route::get('/commandok', [KezdoController::class, 'command']);
+Route::get('/commandok', [KezdoController::class, 'command'])->middleware('auth');
 
 Route::get('/', function () {
     return view('login');
@@ -33,7 +33,7 @@ Route::post('/logout', function () {
 })->name('logout');
 
 Route::get('/database/backup', [DatabaseController::class, 'backup']);
-Route::get('/database/restore-newest', [DatabaseController::class, 'restoreNewest']);
+Route::get('/database/restore-newest', [DatabaseController::class, 'restoreNewest'])->middleware('auth');
 
 
 
@@ -41,8 +41,8 @@ Route::get('/database/restore-newest', [DatabaseController::class, 'restoreNewes
 Route::get('/hirek', [HirController::class, 'index']);
 Route::get('/hirek/kap', [HirController::class, 'scrape']);
 Route::get('/hirek/torol', [HirController::class, 'torol']);
-Route::get('/seed', [HirController::class, 'seedDatabase']);
-Route::get('/migrate-refresh', [DatabaseController::class, 'migrateRefresh']);
+Route::get('/seed', [HirController::class, 'seedDatabase'])->middleware('auth');
+Route::get('/migrate-refresh', [DatabaseController::class, 'migrateRefresh'])->middleware('auth');
 
 
 
@@ -86,9 +86,9 @@ Route::put('/dashboard/kepfeltoltes/{kepfeltoltes}', [KepfeltoltesController::cl
 
 
 
-Route::get('/scrape-postok', [PostokController::class, 'scrape']);
+Route::get('/scrape-postok', [PostokController::class, 'scrape'])->middleware('auth');
 
-Route::get('/eszkozok/kiir', [EszkozokController::class, 'index']);
+Route::get('/eszkozok/kiir', [EszkozokController::class, 'index'])->middleware('auth');
 
 Route::get('/ping', function () {
     Log::info('Pinged at: ' . now());
