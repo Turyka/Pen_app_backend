@@ -201,7 +201,6 @@ private function generatePostgreSQLBackup()
     return $sqlContent;
 }
 
-    // 🔹 Download and restore database from Cloudinary
 public function restoreNewest()
 {
     try {
@@ -236,11 +235,8 @@ public function restoreNewest()
         // Download the SQL file
         $fileContent = file_get_contents($downloadUrl);
         
-        // Convert syntax based on current database driver
-        $driver = env('DB_CONNECTION');
-        if ($driver === 'pgsql') {
-            $fileContent = $this->convertToPostgreSQL($fileContent);
-        }
+        // Fix the escaped apostrophes in the SQL content
+        $fileContent = str_replace("25\\'", "25'", $fileContent);
         
         // Split SQL file into individual queries
         $queries = array_filter(array_map('trim', 
@@ -255,12 +251,23 @@ public function restoreNewest()
             $query = trim($query);
             if (!empty($query) && !str_starts_with($query, '--')) {
                 try {
-                    DB::statement($query);
-                    $executedQueries++;
+                    // SKIP all table operations (DROP TABLE, CREATE TABLE)
+                    if (str_starts_with(strtoupper($query), 'DROP TABLE') || 
+                        str_starts_with(strtoupper($query), 'CREATE TABLE')) {
+                        continue; // Skip table creation/dropping completely
+                    }
+                    
+                    // Only execute INSERT statements
+                    if (str_starts_with(strtoupper($query), 'INSERT INTO')) {
+                        DB::statement($query);
+                        $executedQueries++;
+                    }
+                    // Skip everything else (ALTER, etc.)
+                    
                 } catch (\Exception $e) {
-                    // Ignore "table doesn't exist" errors during DROP TABLE
-                    if (!str_contains($e->getMessage(), 'does not exist') && 
-                        !str_contains($e->getMessage(), 'Base table or view not found')) {
+                    // Skip duplicate key errors (data already exists)
+                    if (!str_contains($e->getMessage(), 'duplicate key') &&
+                        !str_contains($e->getMessage(), 'unique constraint')) {
                         $errors[] = "Query failed: " . substr($query, 0, 100) . "... - " . $e->getMessage();
                     }
                 }
@@ -268,36 +275,18 @@ public function restoreNewest()
         }
 
         return response()->json([
-            'success' => 'Database restored from newest backup!',
+            'success' => 'Data inserted from backup! (Only INSERT queries executed)',
             'backup_used' => $public_id,
             'backup_created' => $newestBackup['created_at'],
-            'queries_executed' => $executedQueries,
+            'inserts_executed' => $executedQueries,
             'total_queries' => count($queries),
-            'driver' => $driver,
+            'driver' => env('DB_CONNECTION'),
             'errors' => $errors
         ]);
 
     } catch (\Exception $e) {
         return response()->json(['error' => 'Restore failed: ' . $e->getMessage()], 500);
     }
-}
-
-private function convertToPostgreSQL($sqlContent)
-{
-    // Convert MySQL syntax to PostgreSQL
-    $converted = $sqlContent;
-    
-    // Remove backticks and convert to quotes
-    $converted = preg_replace('/`([^`]*)`/', '"$1"', $converted);
-    
-    // Remove MySQL-specific syntax
-    $converted = preg_replace('/\bAUTO_INCREMENT\b/', '', $converted);
-    $converted = preg_replace('/\bENGINE=InnoDB\b/', '', $converted);
-    $converted = preg_replace('/\bDEFAULT CHARSET=[^;]*/', '', $converted);
-    $converted = preg_replace('/\bCOLLATE=[^;]*/', '', $converted);
-    $converted = preg_replace('/\bUNSIGNED\b/', '', $converted);
-    
-    return $converted;
 }
 
 }
