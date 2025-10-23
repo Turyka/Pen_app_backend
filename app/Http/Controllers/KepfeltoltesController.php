@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Kepfeltoltes;
 use Illuminate\Http\Request;
+use Cloudinary\Cloudinary;
 
 class KepfeltoltesController extends Controller
 {
@@ -21,28 +22,34 @@ class KepfeltoltesController extends Controller
         return view('kepfeltoltes_keszit');
     }
 
-    public function store(Request $request)
-    {
+   public function store(Request $request)
+{
     $request->validate([
         'event_type' => 'required|string|max:255',
         'event_type_img' => 'required|image|mimes:jpg,jpeg,png|max:5120',
     ]);
 
-    // Generate a unique filename
-    $filename = uniqid() . '.' . $request->file('event_type_img')->getClientOriginalExtension();
+    // Initialize Cloudinary with your CLOUDINARY_URL
+    $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
 
-    // Move the file to /public/img_naptar
-    $request->file('event_type_img')->move(public_path('img_naptar'), $filename);
+    // Upload the image
+    $result = $cloudinary->uploadApi()->upload(
+        $request->file('event_type_img')->getRealPath(),
+        ['folder' => 'img_naptar']
+    );
 
-    // Save in DB with path relative to public folder
+    // Get secure URL
+    $uploadedFileUrl = $result['secure_url'];
+
+    // Save to DB
     Kepfeltoltes::create([
         'event_type' => $request->event_type,
-        'event_type_img' => 'img_naptar/' . $filename, // <–– no 'storage/' prefix needed
+        'event_type_img' => $uploadedFileUrl,
     ]);
 
-    return redirect("/dashboard/kepfeltoltes")->with('success', 'Eseménytípus sikeresen feltöltve!');
-    }
-
+    return redirect("/dashboard/kepfeltoltes")
+        ->with('success', 'Eseménytípus sikeresen feltöltve!');
+}
     public function edit(Kepfeltoltes $kepfeltoltes)
     {
 
