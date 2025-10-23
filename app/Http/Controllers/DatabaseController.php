@@ -4,19 +4,45 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Cloudinary\Cloudinary;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
 class DatabaseController extends Controller
 {
-        public function resetToBackup()
+public function migrateRefresh()
 {
     try {
-        // Simply call your existing restore function
-        return $this->restoreNewest();
+        // First drop all tables to avoid the "relation already exists" error
+        $tables = DB::select("SELECT tablename as table_name FROM pg_tables WHERE schemaname = 'public'");
         
+        // Disable foreign key checks
+        DB::statement('SET session_replication_role = replica;');
+        
+        foreach ($tables as $table) {
+            DB::statement('DROP TABLE IF EXISTS "' . $table->table_name . '" CASCADE;');
+        }
+        
+        // Re-enable foreign key checks
+        DB::statement('SET session_replication_role = origin;');
+        
+        // Now run migrate:refresh
+        $migrateStatus = Artisan::call('migrate:refresh', ['--force' => true]);
+        $migrateOutput = Artisan::output();
+
+        $seedStatus = Artisan::call('db:seed', ['--force' => true]);
+        $seedOutput = Artisan::output();
+
+        return response()->json([
+            'message' => 'Database migrated and seeded successfully.',
+            'migrate_status' => $migrateStatus,
+            'seed_status' => $seedStatus,
+            'migrate_output' => $migrateOutput,
+            'seed_output' => $seedOutput,
+            'tables_dropped' => count($tables)
+        ]);
     } catch (\Exception $e) {
         return response()->json([
-            'message' => 'An error occurred during database reset.',
+            'message' => 'An error occurred during migration refresh.',
             'error' => $e->getMessage(),
         ], 500);
     }
