@@ -8,6 +8,20 @@ use Illuminate\Support\Facades\DB;
 
 class DatabaseController extends Controller
 {
+        public function resetToBackup()
+{
+    try {
+        // Simply call your existing restore function
+        return $this->restoreNewest();
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'An error occurred during database reset.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
     // 🔹 Backup database and upload to Cloudinary
 public function backup()
 {

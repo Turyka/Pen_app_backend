@@ -42,6 +42,7 @@ Route::get('/hirek', [HirController::class, 'index']);
 Route::get('/hirek/kap', [HirController::class, 'scrape']);
 Route::get('/hirek/torol', [HirController::class, 'torol']);
 Route::get('/seed', [HirController::class, 'seedDatabase']);
+Route::get('/reset-to-backup', [DatabaseController::class, 'resetToBackup']);
 
 
 

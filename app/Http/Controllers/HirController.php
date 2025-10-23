@@ -36,6 +36,8 @@ class HirController extends Controller
             ], 500);
         }
     }
+
+
     
     public function scrape()
     {
