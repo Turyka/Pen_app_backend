@@ -12,37 +12,21 @@ class DatabaseController extends Controller
 public function migrateRefresh()
 {
     try {
-        // First drop all tables to avoid the "relation already exists" error
-        $tables = DB::select("SELECT tablename as table_name FROM pg_tables WHERE schemaname = 'public'");
+        $status = Artisan::call('migrate:refresh', [
+            '--force' => true,
+            '--seed' => true
+        ]);
         
-        // Disable foreign key checks
-        DB::statement('SET session_replication_role = replica;');
-        
-        foreach ($tables as $table) {
-            DB::statement('DROP TABLE IF EXISTS "' . $table->table_name . '" CASCADE;');
-        }
-        
-        // Re-enable foreign key checks
-        DB::statement('SET session_replication_role = origin;');
-        
-        // Now run migrate:refresh
-        $migrateStatus = Artisan::call('migrate:refresh', ['--force' => true]);
-        $migrateOutput = Artisan::output();
-
-        $seedStatus = Artisan::call('db:seed', ['--force' => true]);
-        $seedOutput = Artisan::output();
+        $output = Artisan::output();
 
         return response()->json([
-            'message' => 'Database migrated and seeded successfully.',
-            'migrate_status' => $migrateStatus,
-            'seed_status' => $seedStatus,
-            'migrate_output' => $migrateOutput,
-            'seed_output' => $seedOutput,
-            'tables_dropped' => count($tables)
+            'message' => 'Database migrated and seeded successfully!',
+            'status' => $status,
+            'output' => $output
         ]);
     } catch (\Exception $e) {
         return response()->json([
-            'message' => 'An error occurred during migration refresh.',
+            'message' => 'Migration failed',
             'error' => $e->getMessage(),
         ], 500);
     }
