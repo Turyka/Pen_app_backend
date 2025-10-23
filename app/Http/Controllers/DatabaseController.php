@@ -223,8 +223,11 @@ public function restoreNewest()
         $backup = $result['resources'][0];
         $downloadUrl = $backup['secure_url'];
 
-        // Download and fix the SQL file
+        // Download the SQL file
         $fileContent = file_get_contents($downloadUrl);
+        
+        // Convert MySQL syntax to PostgreSQL
+        $fileContent = str_replace("`", "\"", $fileContent); // Backticks to double quotes
         $fileContent = str_replace("25\\'", "25''", $fileContent); // Fix apostrophes
         
         // Execute only INSERT statements
