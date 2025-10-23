@@ -17,43 +17,17 @@ public function backup()
     try {
         $sqlContent = "-- Real Database Backup\n";
         $sqlContent .= "-- Created: " . now()->toDateTimeString() . "\n";
-        $sqlContent .= "-- Database: " . env('DB_DATABASE') . "\n\n";
+        $sqlContent .= "-- Database: " . env('DB_DATABASE') . "\n";
+        $sqlContent .= "-- Driver: " . env('DB_CONNECTION') . "\n\n";
         
-        // Get all table names
-        $tables = DB::select('SHOW TABLES');
-        $dbName = env('DB_DATABASE');
-        $firstTable = (array)$tables[0];
-        $propertyName = array_keys($firstTable)[0];
+        $driver = env('DB_CONNECTION');
         
-        foreach ($tables as $table) {
-            $tableArray = (array)$table;
-            $tableName = $tableArray[$propertyName];
-            
-            // Get table structure
-            $createTable = DB::select("SHOW CREATE TABLE `{$tableName}`");
-            $createTableArray = (array)$createTable[0];
-            $createStatement = $createTableArray['Create Table'];
-            
-            $sqlContent .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
-            $sqlContent .= $createStatement . ";\n\n";
-            
-            // Get all data from the table
-            $rows = DB::table($tableName)->get();
-            
-            if ($rows->count() > 0) {
-                foreach ($rows as $row) {
-                    $columns = [];
-                    $values = [];
-                    
-                    foreach ($row as $column => $value) {
-                        $columns[] = "`{$column}`";
-                        $values[] = $value === null ? 'NULL' : "'" . addslashes($value) . "'";
-                    }
-                    
-                    $sqlContent .= "INSERT INTO `{$tableName}` (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ");\n";
-                }
-                $sqlContent .= "\n";
-            }
+        if ($driver === 'mysql') {
+            $sqlContent .= $this->generateMySQLBackup();
+        } elseif ($driver === 'pgsql') {
+            $sqlContent .= $this->generatePostgreSQLBackup();
+        } else {
+            throw new \Exception("Unsupported database driver: " . $driver);
         }
 
         // Save to file
@@ -71,7 +45,8 @@ public function backup()
         return response()->json([
             'success' => 'Real database backup saved to Cloudinary!',
             'download_url' => $result['secure_url'],
-            'public_id' => $result['public_id']
+            'public_id' => $result['public_id'],
+            'driver' => $driver
         ]);
 
     } catch (\Exception $e) {
@@ -80,10 +55,96 @@ public function backup()
     }
 }
 
+private function generateMySQLBackup()
+{
+    $sqlContent = "";
+    
+    // Get all table names
+    $tables = DB::select('SHOW TABLES');
+    $dbName = env('DB_DATABASE');
+    $firstTable = (array)$tables[0];
+    $propertyName = array_keys($firstTable)[0];
+    
+    foreach ($tables as $table) {
+        $tableArray = (array)$table;
+        $tableName = $tableArray[$propertyName];
+        
+        // Get table structure
+        $createTable = DB::select("SHOW CREATE TABLE `{$tableName}`");
+        $createTableArray = (array)$createTable[0];
+        $createStatement = $createTableArray['Create Table'];
+        
+        $sqlContent .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
+        $sqlContent .= $createStatement . ";\n\n";
+        
+        // Get all data from the table
+        $rows = DB::table($tableName)->get();
+        
+        if ($rows->count() > 0) {
+            foreach ($rows as $row) {
+                $columns = [];
+                $values = [];
+                
+                foreach ($row as $column => $value) {
+                    $columns[] = "`{$column}`";
+                    $values[] = $value === null ? 'NULL' : "'" . addslashes($value) . "'";
+                }
+                
+                $sqlContent .= "INSERT INTO `{$tableName}` (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ");\n";
+            }
+            $sqlContent .= "\n";
+        }
+    }
+    
+    return $sqlContent;
+}
+
+private function generatePostgreSQLBackup()
+{
+    $sqlContent = "";
+    
+    // Get all table names
+    $tables = DB::select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'");
+    
+    foreach ($tables as $table) {
+        $tableName = $table->table_name;
+        
+        // Get table structure
+        $createTable = DB::select("SELECT pg_get_tabledef('{$tableName}') as create_statement");
+        $createStatement = $createTable[0]->create_statement;
+        
+        $sqlContent .= "DROP TABLE IF EXISTS \"{$tableName}\" CASCADE;\n";
+        $sqlContent .= $createStatement . ";\n\n";
+        
+        // Get all data from the table
+        $rows = DB::table($tableName)->get();
+        
+        if ($rows->count() > 0) {
+            foreach ($rows as $row) {
+                $columns = [];
+                $values = [];
+                
+                foreach ($row as $column => $value) {
+                    $columns[] = "\"{$column}\"";
+                    $values[] = $value === null ? 'NULL' : "'" . addslashes($value) . "'";
+                }
+                
+                $sqlContent .= "INSERT INTO \"{$tableName}\" (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ");\n";
+            }
+            $sqlContent .= "\n";
+        }
+    }
+    
+    return $sqlContent;
+}
+
     // 🔹 Download and restore database from Cloudinary
 public function restoreNewest()
 {
     try {
+        // Temporarily disable session handling
+        config(['session.driver' => 'array']);
+
         // Initialize Cloudinary
         $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
         
@@ -112,9 +173,15 @@ public function restoreNewest()
         // Download the SQL file
         $fileContent = file_get_contents($downloadUrl);
         
+        // Convert syntax based on current database driver
+        $driver = env('DB_CONNECTION');
+        if ($driver === 'pgsql') {
+            $fileContent = $this->convertToPostgreSQL($fileContent);
+        }
+        
         // Split SQL file into individual queries
         $queries = array_filter(array_map('trim', 
-            preg_split('/;\s*$/m', $fileContent)
+            preg_split('/;/', $fileContent)
         ));
 
         // Execute each query
@@ -122,12 +189,17 @@ public function restoreNewest()
         $errors = [];
 
         foreach ($queries as $query) {
-            if (!empty(trim($query))) {
+            $query = trim($query);
+            if (!empty($query) && !str_starts_with($query, '--')) {
                 try {
                     DB::statement($query);
                     $executedQueries++;
                 } catch (\Exception $e) {
-                    $errors[] = "Query failed: " . $e->getMessage();
+                    // Ignore "table doesn't exist" errors during DROP TABLE
+                    if (!str_contains($e->getMessage(), 'does not exist') && 
+                        !str_contains($e->getMessage(), 'Base table or view not found')) {
+                        $errors[] = "Query failed: " . substr($query, 0, 100) . "... - " . $e->getMessage();
+                    }
                 }
             }
         }
@@ -137,6 +209,8 @@ public function restoreNewest()
             'backup_used' => $public_id,
             'backup_created' => $newestBackup['created_at'],
             'queries_executed' => $executedQueries,
+            'total_queries' => count($queries),
+            'driver' => $driver,
             'errors' => $errors
         ]);
 
@@ -145,27 +219,22 @@ public function restoreNewest()
     }
 }
 
-    // 🔹 List all available backups from Cloudinary
-    public function listBackups()
-    {
-        $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
+private function convertToPostgreSQL($sqlContent)
+{
+    // Convert MySQL syntax to PostgreSQL
+    $converted = $sqlContent;
+    
+    // Remove backticks and convert to quotes
+    $converted = preg_replace('/`([^`]*)`/', '"$1"', $converted);
+    
+    // Remove MySQL-specific syntax
+    $converted = preg_replace('/\bAUTO_INCREMENT\b/', '', $converted);
+    $converted = preg_replace('/\bENGINE=InnoDB\b/', '', $converted);
+    $converted = preg_replace('/\bDEFAULT CHARSET=[^;]*/', '', $converted);
+    $converted = preg_replace('/\bCOLLATE=[^;]*/', '', $converted);
+    $converted = preg_replace('/\bUNSIGNED\b/', '', $converted);
+    
+    return $converted;
+}
 
-        $result = $cloudinary->adminApi()->assets([
-            'type' => 'upload',
-            'prefix' => 'database_backups',
-            'resource_type' => 'raw',
-            'max_results' => 50
-        ]);
-
-        $backups = collect($result['resources'])->map(function($backup) {
-            return [
-                'public_id' => $backup['public_id'],
-                'url' => $backup['secure_url'],
-                'created_at' => $backup['created_at'],
-                'size' => $backup['bytes']
-            ];
-        });
-        dd($backups);
-        return response()->json(['backups' => $backups]);
-    }
 }
