@@ -2,7 +2,7 @@
 <html :class="{ 'theme-dark': dark }" x-data="data()" lang="HU">
 
 <head>
-  <title>Képfeltöltés</title>
+  <title>Esemény feltöltés</title>
   @include('dashboard.Parts._head')
 </head>
 
@@ -34,7 +34,7 @@
       <main class="h-full pb-16 overflow-y-auto">
         <div class="container grid px-6 mx-auto">
           <h2 class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">
-            Közlemény Táblák
+            Esemény Tábla
           </h2>
 
 
@@ -44,8 +44,8 @@
               <table class="w-full whitespace-no-wrap">
                 <thead>
                   <tr class="text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800">
-                    <th class="px-4 py-3">Cím</th>
-                    <th class="px-4 py-3">Elérés</th>
+                    <th class="px-4 py-3">Esemény Címe</th>
+                    <th class="px-4 py-3">Esemény Kép Elérése</th>
                     <th class="px-4 py-3">Művelet</th>
                   </tr>
                 </thead>
