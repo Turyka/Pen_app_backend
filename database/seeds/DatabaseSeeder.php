@@ -24,37 +24,7 @@ class DatabaseSeeder extends Seeder
             'titulus' => 'Admin'
         ]);
 
-        User::create([
-            'name' => 'Barni',
-            'teljes_nev' => 'Mike Barnabás',
-            'password' => Hash::make('asd'),
-            'szak' => 'GTK',
-            'titulus' => 'Elnök'
-        ]);
-
-        User::create([
-            'name' => 'Doki',
-            'teljes_nev' => 'Kocsis Dominik',
-            'password' => Hash::make('asd'),
-            'szak' => 'MIK',
-            'titulus' => 'Képviselő'
-        ]);
-
-        User::create([
-            'name' => 'Luca',
-            'teljes_nev' => 'Kóti Luca',
-            'password' => Hash::make('asd'),
-            'szak' => 'GTK',
-            'titulus' => 'Elnökhelyettes'
-        ]);
-
-        User::create([
-            'name' => 'Kornél',
-            'teljes_nev' => 'Büki Kornél',
-            'password' => Hash::make('asd'),
-            'szak' => 'MIK',
-            'titulus' => 'Referens'
-        ]);
+        
         /*
         $brands = ['Samsung', 'iPhone', 'Redmi', 'Huawei', 'OnePlus', 'Nokia'];
         $faker = \Faker\Factory::create();
