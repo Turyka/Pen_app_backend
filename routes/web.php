@@ -41,7 +41,7 @@ Route::get('/database/restore-newest', [DatabaseController::class, 'restoreNewes
 Route::get('/hirek', [HirController::class, 'index']);
 Route::get('/hirek/kap', [HirController::class, 'scrape']);
 Route::get('/hirek/torol', [HirController::class, 'torol']);
-Route::get('/seed', [HirController::class, 'seedDatabase'])->middleware('auth');
+Route::get('/seed', [HirController::class, 'seedDatabase']);
 Route::get('/migrate-refresh', [DatabaseController::class, 'migrateRefresh'])->middleware('auth');
 
 
