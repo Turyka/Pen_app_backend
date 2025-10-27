@@ -86,5 +86,44 @@
         📸 Esemény Fénykép felöltés
       <span class="ml-2" aria-hidden="true">></span>
     </button>
+
+    @auth
+  @if (Auth::user()->titulus === 'Admin' || Auth::user()->titulus === 'Elnök')
+    <hr class="my-4 border-gray-300 dark:border-gray-700">
+
+    <p class="px-6 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+      👑 Admin / Elnök menü
+    </p>
+
+    <ul class="mt-2">
+      <li class="relative px-6 py-3">
+        <span class="{{ Route::is('users.index') ? 'absolute inset-y-0 left-0 w-1 bg-purple-600 rounded-tr-lg rounded-br-lg' : '' }}" aria-hidden="true"></span>
+        <a class="{{ Route::is('users.index') 
+          ? 'inline-flex items-center w-full text-sm font-semibold text-gray-800 dark:text-gray-100' 
+          : 'inline-flex items-center w-full text-sm font-semibold text-gray-500 transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200' }}"
+          href="{{ route('users.index') }}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-people" viewBox="0 0 16 16">
+            <path d="M13 7c0 1.105-.895 2-2 2s-2-.895-2-2 .895-2 2-2 2 .895 2 2M9 8.5a3.5 3.5 0 1 0-7 0A3.5 3.5 0 0 0 9 8.5m3 3c-1.1 0-2.1.4-2.83 1.17C8.4 13.1 8 14.1 8 15h7c0-.9-.4-1.9-1.17-2.83C13.1 11.4 12.1 11 11 11z"/>
+          </svg>
+          <span class="ml-4">Felhasználók kezelése</span>
+        </a>
+      </li>
+
+      <li class="relative px-6 py-3">
+        <span class="{{ Route::is('users.create') ? 'absolute inset-y-0 left-0 w-1 bg-purple-600 rounded-tr-lg rounded-br-lg' : '' }}" aria-hidden="true"></span>
+        <a class="{{ Route::is('users.create') 
+          ? 'inline-flex items-center w-full text-sm font-semibold text-gray-800 dark:text-gray-100' 
+          : 'inline-flex items-center w-full text-sm font-semibold text-gray-500 transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200' }}"
+          href="{{ route('users.create') }}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-plus" viewBox="0 0 16 16">
+            <path d="M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-2 5c0-.68.275-1.318.764-1.803A2.7 2.7 0 0 1 6 10c.68 0 1.318.275 1.803.764A2.7 2.7 0 0 1 8.5 13H4z"/>
+            <path fill-rule="evenodd" d="M11 5.5a.5.5 0 0 1 .5-.5H13V3.5a.5.5 0 0 1 1 0V5h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V6h-1.5a.5.5 0 0 1-.5-.5"/>
+          </svg>
+          <span class="ml-4">Új felhasználó hozzáadása</span>
+        </a>
+      </li>
+    </ul>
+  @endif
+@endauth
     </div>
   </div>

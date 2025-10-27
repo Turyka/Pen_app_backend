@@ -16,6 +16,7 @@ use App\Http\Controllers\DatabaseController;
 
 
 
+
 // Commandok
 Route::get('/commandok', [KezdoController::class, 'command'])->middleware('auth');
 
@@ -84,7 +85,13 @@ Route::delete('/kepfeltoltes/destroy/{kepfeltoltes}', [KepfeltoltesController::c
 Route::put('/dashboard/kepfeltoltes/{kepfeltoltes}', [KepfeltoltesController::class, 'update'])->name('kepfeltoltes.update')->middleware('auth');
 
 
-
+// User müveletek
+Route::middleware(['auth', 'role:Admin,Elnök'])->group(function () {
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
+    Route::post('/users', [UserController::class, 'store'])->name('users.store');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+});
 
 Route::get('/scrape-postok', [PostokController::class, 'scrape'])->middleware('auth');
 

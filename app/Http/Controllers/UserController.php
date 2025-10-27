@@ -2,76 +2,73 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
 use App\Models\User;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
-
-    public function create(){
-        return view('register');
+    public function index()
+    {
+        $users = User::paginate(10);
+        return view('users.index', compact('users'));
     }
 
-    public function store(Request $request){
-        $formFields = $request->validate([
-            'name' => 'required',
-            'password' => 'required'    
+    public function create()
+    {
+        return view('users.create');
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|unique:users',
+            'teljes_nev' => 'required|unique:users',
+            'password' => 'required|min:6',
+            'szak' => 'required',
+            'titulus' => 'required'
         ]);
 
-        $formFields['password'] = Hash::make($formFields['password']);
-
-        $user = User::create($formFields);
-        return redirect('/');
-    }
-    //Napelemes project
-    public function getUsers()
-    {
-        $users = User::all()->makeVisible('password');
-        return response()->json(['status' => 'success', 'data' => $users]);
-    }
-
-
-
-    public function addUser(Request $request)
-    {
-        $request->validate([
-            'username' => 'required|unique:users',
-            'password' => 'required|min:6'
+        User::create([
+            'name' => $validated['name'],
+            'teljes_nev' => $validated['teljes_nev'],
+            'password' => Hash::make($validated['password']),
+            'szak' => $validated['szak'],
+            'titulus' => $validated['titulus'],
         ]);
 
-        $user = new User();
-        $user->username = $request->username;
-        $user->password = Hash::make($request->password);
-        $user->save();
-
-        return response()->json([
-    'status' => 'success',
-    'message' => 'User added successfully'
-        ], 201); 
+        return redirect()->route('users.index')->with('success', 'Felhasználó sikeresen létrehozva!');
     }
 
-public function bejelentkezes(Request $request)
-{
-    $request->validate([
-        'name' => 'required|string',
-        'password' => 'required|string',
-    ]);
-
-    $user = User::where('name', $request->name)->first();
-
-    if (!$user || !Hash::check($request->password, $user->password)) {
-        return response()->json(['status' => 'error', 'message' => 'Nem megfelelo adat'], 401);
+    public function edit(User $user)
+    {
+        return view('users.edit', compact('user'));
     }
 
-    $token = $user->createToken($request->name)->plainTextToken;
+    public function update(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'teljes_nev' => 'required|unique:users,teljes_nev,' . $user->id,
+            'szak' => 'required',
+            'titulus' => 'required',
+        ]);
 
-    return response()->json(['status' => 'success', 'token' => $token], 200);
-}
-    
+        $user->update($validated);
+
+        return redirect()->route('users.index')->with('success', 'Felhasználó módosítva.');
+    }
+
+    public function destroy(User $user)
+    {
+        $currentUser = Auth::user();
+
+        // Prevent Elnök from deleting Admin
+        if ($currentUser->titulus === 'Elnök' && $user->titulus === 'Admin') {
+            return redirect()->route('users.index')->withErrors(['error' => 'Az Admin törlése nem engedélyezett.']);
+        }
+
+        $user->delete();
+        return redirect()->route('users.index')->with('success', 'Felhasználó törölve.');
+    }
 }
