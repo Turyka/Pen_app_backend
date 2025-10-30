@@ -29,19 +29,36 @@ class ScrapeHirekCommand extends Command
         libxml_clear_errors();
         $xpath = new DOMXPath($dom);
 
-        $cards = $xpath->query("//div[contains(@class, 'dpt-entry')]");
+        // UPDATED: New selector for current website structure
+        $cards = $xpath->query("//div[contains(@class, 'wp-block-group') and .//figure[contains(@class, 'wp-block-post-featured-image')]]");
+        
+        $this->info("Found " . $cards->length . " cards on the page");
+        
         $added = 0;
         $cardsArray = iterator_to_array($cards);
         $cardsArray = array_reverse($cardsArray);
 
         foreach ($cardsArray as $card) {
-            $titleNode = $xpath->query(".//h3[contains(@class, 'dpt-title')]/a", $card);
+            // UPDATED: New selectors for current structure
+            $titleNode = $xpath->query(".//h2[contains(@class, 'wp-block-post-title')]/a", $card);
             $title = $titleNode->length ? trim($titleNode[0]->nodeValue) : '';
             $link = $titleNode->length ? $titleNode[0]->getAttribute('href') : '';
+            
+            // UPDATED: Image now comes from src attribute, not data-dpt-src
             $imgNode = $xpath->query(".//img", $card);
-            $image = $imgNode->length ? $imgNode[0]->getAttribute('data-dpt-src') : '';
-            $dateNode = $xpath->query(".//div[contains(@class, 'dpt-date')]/time", $card);
+            $image = $imgNode->length ? $imgNode[0]->getAttribute('src') : '';
+            
+            // UPDATED: Date now comes from time element with datetime attribute
+            $dateNode = $xpath->query(".//time[@datetime]", $card);
             $date = $dateNode->length ? $dateNode[0]->getAttribute('datetime') : null;
+
+            // Make URLs absolute if they're relative
+            if ($link && strpos($link, 'http') !== 0) {
+                $link = 'https://pen.uni-pannon.hu' . $link;
+            }
+            if ($image && strpos($image, 'http') !== 0) {
+                $image = 'https://pen.uni-pannon.hu' . $image;
+            }
 
             // Find existing news with same title
             $mar_van = Hir::where('title', $title)

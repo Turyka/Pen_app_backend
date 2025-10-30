@@ -40,11 +40,18 @@ class HirController extends Controller
 
     
     public function scrape()
-    {
-        Artisan::call('scrape:hirek');
-
-        return response()->json(['message' => 'Sikeres lekérés']);
-    }
+{
+    // Capture the output of the command
+    $output = new \Symfony\Component\Console\Output\BufferedOutput();
+    $result = Artisan::call('scrape:hirek', [], $output);
+    
+    $commandOutput = $output->fetch();
+    
+    return response()->json([
+        'message' => 'Sikeres lekérés',
+        'command_output' => $commandOutput
+    ]);
+}
 
     // Show saved news
     public function index(Request $request)

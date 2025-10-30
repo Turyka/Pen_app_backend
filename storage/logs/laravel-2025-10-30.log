@@ -1,0 +1,22 @@
+[2025-10-30 20:51:04] staging.ERROR: syntax error, unexpected token "public", expecting end of file {"exception":"[object] (ParseError(code: 0): syntax error, unexpected token \"public\", expecting end of file at E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\app\\Console\\Commands\\ScrapeHirekCommand.php:11)
+[stacktrace]
+#0 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\composer\\ClassLoader.php(427): Composer\\Autoload\\{closure}('E:\\\\Egyetem\\\\Pann...')
+#1 [internal function]: Composer\\Autoload\\ClassLoader->loadClass('App\\\\Console\\\\Com...')
+#2 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(373): is_subclass_of('App\\\\Console\\\\Com...', 'Illuminate\\\\Cons...')
+#3 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\app\\Console\\Kernel.php(37): Illuminate\\Foundation\\Console\\Kernel->load(Array)
+#4 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(480): App\\Console\\Kernel->commands()
+#5 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(196): Illuminate\\Foundation\\Console\\Kernel->bootstrap()
+#6 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\artisan(35): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#7 {main}
+"} 
+[2025-10-30 20:51:10] staging.ERROR: syntax error, unexpected token "public", expecting end of file {"exception":"[object] (ParseError(code: 0): syntax error, unexpected token \"public\", expecting end of file at E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\app\\Console\\Commands\\ScrapeHirekCommand.php:11)
+[stacktrace]
+#0 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\composer\\ClassLoader.php(427): Composer\\Autoload\\{closure}('E:\\\\Egyetem\\\\Pann...')
+#1 [internal function]: Composer\\Autoload\\ClassLoader->loadClass('App\\\\Console\\\\Com...')
+#2 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(373): is_subclass_of('App\\\\Console\\\\Com...', 'Illuminate\\\\Cons...')
+#3 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\app\\Console\\Kernel.php(37): Illuminate\\Foundation\\Console\\Kernel->load(Array)
+#4 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(480): App\\Console\\Kernel->commands()
+#5 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(196): Illuminate\\Foundation\\Console\\Kernel->bootstrap()
+#6 E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\artisan(35): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#7 {main}
+"} 
