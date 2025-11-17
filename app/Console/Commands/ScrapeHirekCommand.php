@@ -45,7 +45,7 @@ class ScrapeHirekCommand extends Command
             $link = $titleNode->length ? $titleNode[0]->getAttribute('href') : '';
             
             // UPDATED: Image now comes from src attribute, not data-dpt-src
-            $imgNode = $xpath->query(".//img", $card);
+            $imgNode = $xpath->query(".//figure[contains(@class,'wp-block-post-featured-image')]//img", $card);
             $image = $imgNode->length ? $imgNode[0]->getAttribute('src') : '';
             
             // UPDATED: Date now comes from time element with datetime attribute
