@@ -34,6 +34,7 @@ Route::post('/logout', function () {
 })->name('logout');
 
 Route::get('/database/backup', [DatabaseController::class, 'backup']);
+Route::get('/database/telefon/refresh', [DatabaseController::class, 'refreshAdatEszkozok'])->middleware('auth');
 Route::get('/database/restore-newest', [DatabaseController::class, 'restoreNewest'])->middleware('auth');
 
 

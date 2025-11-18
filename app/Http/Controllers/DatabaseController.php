@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Cloudinary\Cloudinary;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DatabaseController extends Controller
 {
@@ -34,6 +35,15 @@ public function migrateRefresh()
         ], 500);
     }
 }
+
+
+public function refreshAdatEszkozok()
+{
+    DB::table('adat_eszkozok')->truncate();
+
+    return response()->json(['message' => 'All data from adat_eszkozok has been deleted']);
+}
+
 
     // 🔹 Backup database and upload to Cloudinary
 public function backup()
