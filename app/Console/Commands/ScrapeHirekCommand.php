@@ -15,7 +15,9 @@ class ScrapeHirekCommand extends Command
 
     public function handle(): int
     {
-        $response = Http::get('https://pen.uni-pannon.hu/hirek/');
+        $response = Http::withOptions([
+        'verify' => false
+        ])->get('https://pen.uni-pannon.hu/hirek/');
 
         if (!$response->successful()) {
             $this->error('Sikertelen lehúzás');
