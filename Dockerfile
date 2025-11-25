@@ -1,5 +1,9 @@
 FROM richarvey/nginx-php-fpm:3.1.6
 
+# Install CA certificates so cURL can verify HTTPS
+RUN apk update && apk add ca-certificates && update-ca-certificates
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+
 COPY . .
 
 # Image config
