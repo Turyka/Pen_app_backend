@@ -35,7 +35,7 @@ Route::post('/logout', function () {
 
 Route::get('/database/backup', [DatabaseController::class, 'backup']);
 Route::get('/database/telefon/refresh', [DatabaseController::class, 'refreshAdatEszkozok'])->middleware('auth');
-Route::get('/database/restore-newest', [DatabaseController::class, 'restoreNewest'])->middleware('auth');
+Route::get('/database/restore-newest', [DatabaseController::class, 'restoreNewest']);
 
 
 
@@ -44,7 +44,7 @@ Route::get('/hirek', [HirController::class, 'index']);
 Route::get('/hirek/kap', [HirController::class, 'scrape']);
 Route::get('/hirek/torol', [HirController::class, 'torol']);
 Route::get('/seed', [HirController::class, 'seedDatabase']);
-Route::get('/migrate-refresh', [DatabaseController::class, 'migrateRefresh'])->middleware('auth');
+Route::get('/migrate-refresh', [DatabaseController::class, 'migrateRefresh']);
 
 
 
