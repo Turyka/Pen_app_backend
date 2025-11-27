@@ -124,7 +124,15 @@ private function generateMySQLBackup()
                 
                 foreach ($row as $column => $value) {
                     $columns[] = "`{$column}`";
-                    $values[] = $value === null ? 'NULL' : "'" . addslashes($value) . "'";
+                    if (is_bool($value)) {
+    $values[] = $value ? '1' : '0';
+} elseif ($value === null) {
+    $values[] = 'NULL';
+} elseif ($value === '') {
+    $values[] = 'NULL';
+} else {
+    $values[] = "'" . addslashes($value) . "'";
+}
                 }
                 
                 $sqlContent .= "INSERT INTO `{$tableName}` (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ");\n";
