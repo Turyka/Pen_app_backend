@@ -1,0 +1,5 @@
+[2026-01-10 01:22:24] staging.ERROR: Cannot declare class App\Console\Commands\CrawlFacebookGroup, because the name is already in use {"exception":"[object] (Symfony\\Component\\ErrorHandler\\Error\\FatalError(code: 0): Cannot declare class App\\Console\\Commands\\CrawlFacebookGroup, because the name is already in use at E:/Egyetem/Pannon Egyetem dolgok/Pen_app_backend/app/Console/Commands/ScrapeHirekCommand.php:8)
+[stacktrace]
+#0 {main}
+"} 
+[2026-01-10 01:24:02] staging.INFO: Successfully crawled pannonegyetemnagykanizsa {"count":0} 

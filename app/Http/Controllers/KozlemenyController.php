@@ -86,7 +86,7 @@ class KozlemenyController extends Controller
     {
         if ($kozlemeny->user_id !== auth()->user()->id) {
         abort(403, 'Hozzáférés megtagadva.');
-}
+        }
         return view('kozlemeny_edit', compact('kozlemeny'));
     }
 

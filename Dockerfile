@@ -1,8 +1,22 @@
 FROM richarvey/nginx-php-fpm:3.1.6
 
-# Install CA certificates so cURL can verify HTTPS
+# Install CA certificates
 RUN apk update && apk add ca-certificates && update-ca-certificates
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+
+# Install Chrome + Python for Facebook scraper
+RUN apk add --no-cache \
+    wget \
+    gnupg \
+    python3 \
+    py3-pip \
+    chromium \
+    chromium-chromedriver \
+    && pip3 install selenium
+
+# Set Chrome options
+ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV CHROME_DRIVER=/usr/bin/chromedriver
 
 COPY . .
 

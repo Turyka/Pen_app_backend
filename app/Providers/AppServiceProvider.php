@@ -14,7 +14,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+         // Auto-register Services folder
+        $this->app->bind('App\Services\FacebookGroupCrawler', function ($app) {
+            return new \App\Services\FacebookGroupCrawler('');
+        });
     }
 
     /**
