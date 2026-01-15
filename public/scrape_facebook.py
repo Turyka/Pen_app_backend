@@ -27,6 +27,7 @@ def scrape_facebook_posts():
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--window-size=1920,1080")
+        chrome_options.add_argument("--disable-images")
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option("useAutomationExtension", False)
@@ -34,8 +35,7 @@ def scrape_facebook_posts():
 
         # Auto-detect chromedriver
         service = None
-        if os.path.exists('/usr/bin/chromedriver'):
-            service = Service('/usr/bin/chromedriver')
+
 
         driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
@@ -43,11 +43,11 @@ def scrape_facebook_posts():
         url = "https://www.facebook.com/pannon.nagykanizsa"
         driver.get(url)
 
-        time.sleep(5)
+        time.sleep(1)
 
         # Force scroll + image load
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(4)
+        time.sleep(1)
 
         driver.execute_script("""
             window.scrollTo(0, 0);
@@ -57,7 +57,7 @@ def scrape_facebook_posts():
                 });
             }, 1500);
         """)
-        time.sleep(3)
+        time.sleep(1)
 
         posts = []
         selectors = ['div[role="article"]', 'div[data-pagelet^="FeedUnit"]', '[data-testid="fbfeed_story"]']
