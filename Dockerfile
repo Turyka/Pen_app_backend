@@ -1,59 +1,39 @@
-# ===========================================
-# Full Laravel + Python Scraper Dockerfile
-# ===========================================
+FROM richarvey/nginx-php-fpm:3.1.6
 
-FROM php:8.2-fpm-bullseye
-
-# -------------------------------
-# Install system dependencies
-# -------------------------------
-RUN apt-get update && apt-get install -y \
-    # Basic tools
-    wget curl gnupg bash unzip git \
-    # Chromium for scraping
-    chromium chromium-driver \
-    libnss3 libx11-6 libxcomposite1 libxrandr2 libglib2.0-0 \
-    # Python
-    python3 python3-pip \
-    # Other dependencies
+# Install CA certificates + TikTok scraper deps
+RUN apk update && apk add --no-cache \
     ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && update-ca-certificates \
+    && apk add --no-cache \
+    python3 \
+    py3-pip \
+    nodejs \
+    npm \
+    && pip3 install --no-cache-dir \
+    playwright \
+    requests \
+    && python3 -m playwright install --with-deps chromium \
+    && apk add --no-cache wget gnupg
 
-# -------------------------------
-# Set Chrome environment variables
-# -------------------------------
-ENV CHROME_BIN=/usr/bin/chromium
-ENV CHROME_DRIVER=/usr/bin/chromedriver
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV CHROME_BIN=/ms-playwright/chromium-*/chrome-linux/chrome
 
-# -------------------------------
-# Install Python packages
-# -------------------------------
-RUN pip3 install --no-cache-dir selenium playwright \
-    && playwright install chromium
-
-# -------------------------------
-# Set Laravel environment variables
-# -------------------------------
-ENV SKIP_COMPOSER=1
-ENV WEBROOT=/var/www/html/public
-ENV PHP_ERRORS_STDERR=1
-ENV RUN_SCRIPTS=1
-ENV REAL_IP_HEADER=1
-ENV APP_ENV=production
-ENV APP_DEBUG=false
-ENV LOG_CHANNEL=stderr
-ENV COMPOSER_ALLOW_SUPERUSER=1
-
-# -------------------------------
-# Copy your app code
-# -------------------------------
+# Copy app + scraper
 COPY . /var/www/html
 WORKDIR /var/www/html
 
-# Make start.sh executable
-RUN chmod +x /var/www/html/start.sh
+# Image config
+ENV SKIP_COMPOSER 1
+ENV WEBROOT /var/www/html/public
+ENV PHP_ERRORS_STDERR 1
+ENV RUN_SCRIPTS 1
+ENV REAL_IP_HEADER 1
 
-# -------------------------------
-# Default command
-# -------------------------------
-CMD ["/var/www/html/start.sh"]
+# Laravel config
+ENV APP_ENV production
+ENV APP_DEBUG false
+ENV LOG_CHANNEL stderr
+ENV COMPOSER_ALLOW_SUPERUSER 1
+
+CMD ["/start.sh"]
