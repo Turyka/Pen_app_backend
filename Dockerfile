@@ -1,39 +1,39 @@
-FROM richarvey/nginx-php-fpm:3.1.6
+# ===========================================
+# Full Laravel + Python Scraper Dockerfile
+# ===========================================
 
-# Install CA certificates and required libs
-RUN apk update && apk add --no-cache \
+FROM php:8.2-fpm-bullseye
+
+# -------------------------------
+# Install system dependencies
+# -------------------------------
+RUN apt-get update && apt-get install -y \
+    # Basic tools
+    wget curl gnupg bash unzip git \
+    # Chromium for scraping
+    chromium chromium-driver \
+    libnss3 libx11-6 libxcomposite1 libxrandr2 libglib2.0-0 \
+    # Python
+    python3 python3-pip \
+    # Other dependencies
     ca-certificates \
-    chromium \
-    chromium-chromedriver \
-    python3 \
-    py3-pip \
-    bash \
-    curl \
-    gnupg \
-    libstdc++ \
-    nss \
-    libx11 \
-    libxcomposite \
-    libxrandr \
-    libc6-compat \
-    && update-ca-certificates
+    && rm -rf /var/lib/apt/lists/*
 
-
-    
-# Upgrade pip and install Python packages
-RUN python3 -m ensurepip \
-    && pip3 install --upgrade pip \
-    && pip3 install selenium playwright \
-    && playwright install chromium
-
-# Set Chromium paths
+# -------------------------------
+# Set Chrome environment variables
+# -------------------------------
 ENV CHROME_BIN=/usr/bin/chromium
 ENV CHROME_DRIVER=/usr/bin/chromedriver
 
-# Copy application
-COPY . .
+# -------------------------------
+# Install Python packages
+# -------------------------------
+RUN pip3 install --no-cache-dir selenium playwright \
+    && playwright install chromium
 
-# Laravel environment
+# -------------------------------
+# Set Laravel environment variables
+# -------------------------------
 ENV SKIP_COMPOSER=1
 ENV WEBROOT=/var/www/html/public
 ENV PHP_ERRORS_STDERR=1
@@ -44,7 +44,16 @@ ENV APP_DEBUG=false
 ENV LOG_CHANNEL=stderr
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Ensure start.sh is executable
-RUN chmod +x /start.sh
+# -------------------------------
+# Copy your app code
+# -------------------------------
+COPY . /var/www/html
+WORKDIR /var/www/html
 
-CMD ["/start.sh"]
+# Make start.sh executable
+RUN chmod +x /var/www/html/start.sh
+
+# -------------------------------
+# Default command
+# -------------------------------
+CMD ["/var/www/html/start.sh"]
