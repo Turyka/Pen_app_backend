@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Facebook Scraper - Laravel Compatible (FIXED)
-Returns ALWAYS valid JSON with BEST post
+Facebook Scraper - Laravel Compatible
+Returns ALWAYS valid JSON
 """
 
 import sys
@@ -43,55 +43,80 @@ def scrape_facebook_posts():
         url = "https://www.facebook.com/pannon.nagykanizsa"
         driver.get(url)
 
-        # BETTER scrolling - multiple scrolls to load more posts
-        for i in range(3):
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(3)
+        time.sleep(5)
 
-        # Scroll back up and force image load
-        driver.execute_script("window.scrollTo(0, 0);")
-        time.sleep(2)
+        # Force scroll + image load
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(4)
 
         driver.execute_script("""
-            document.querySelectorAll('img').forEach(img => {
-                if (!img.complete) {
-                    img.scrollIntoView({behavior: 'instant'});
-                    img.src = img.src;
-                }
-            });
+            window.scrollTo(0, 0);
+            setTimeout(() => {
+                document.querySelectorAll('img').forEach(img => {
+                    if (!img.src || !img.complete) img.scrollIntoView({behavior: 'instant'});
+                });
+            }, 1500);
         """)
         time.sleep(3)
 
-        all_posts = []
-        selectors = [
-            'div[role="article"]', 
-            'div[data-pagelet^="FeedUnit"]', 
-            '[data-testid="fbfeed_story"]',
-            'div[role="feed"] > div > div > div > div > div[role="article"]'
-        ]
+        posts = []
+        selectors = ['div[role="article"]', 'div[data-pagelet^="FeedUnit"]', '[data-testid="fbfeed_story"]']
         
-        # Try all selectors and collect ALL posts
+        article = None
         for selector in selectors:
-            try:
-                articles = driver.find_elements(By.CSS_SELECTOR, selector)
-                for article in articles[:5]:  # Max 5 posts
-                    post_data = extract_post_data(article)
-                    if post_data and post_data['title']:  # Only valid posts
-                        all_posts.append(post_data)
-            except:
-                continue
+            articles = driver.find_elements(By.CSS_SELECTOR, selector)
+            if articles:
+                article = articles[0]
+                break
+
+        if article:
+            # TITLE
+            title = ""
+            text_selectors = [
+                'div[data-ad-preview="message"] span',
+                'div[dir="auto"] span',
+                'div.x1lliihq span'
+            ]
+            for sel in text_selectors:
+                try:
+                    elems = article.find_elements(By.CSS_SELECTOR, sel)
+                    if elems:
+                        title = elems[0].text.strip()
+                        if len(title) > 10:
+                            break
+                except:
+                    continue
+
+            if title:
+                # URL
+                links = article.find_elements(By.CSS_SELECTOR, 'a[href*="/posts/"], a[href*="/pfbid"]')
+                post_url = ""
+                if links:
+                    href = links[0].get_attribute("href")
+                    if href:
+                        post_url = urljoin("https://www.facebook.com", href).split("?")[0]
+
+                # IMAGE (3 methods)
+                image_url = ""
+                imgs = article.find_elements(By.CSS_SELECTOR, 
+                    'img[src*="scontent"], img[src*="fbcdn"], img[data-imgperflogname*="image"]'
+                )
+                for img in imgs:
+                    src = img.get_attribute("src")
+                    if src and ("scontent" in src or "fbcdn" in src) and "emoji" not in src.lower():
+                        image_url = src
+                        break
+
+                posts.append({
+                    "title": title[:500],
+                    "url": post_url,
+                    "image_url": image_url
+                })
 
         driver.quit()
 
-        # Pick BEST post (longest title, valid URL, image preferred)
-        best_post = {"title": "", "url": "", "image_url": ""}
-        if all_posts:
-            all_posts.sort(key=lambda x: len(x['title']), reverse=True)
-            best_post = all_posts[0]
-
         result = {
-            "latest_1": best_post,
-            "all_posts_count": len(all_posts),
+            "latest_1": posts[0] if posts else {"title": "", "url": "", "image_url": ""},
             "source_url": url,
             "status": "success",
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
@@ -100,86 +125,15 @@ def scrape_facebook_posts():
     except Exception as e:
         result = {
             "latest_1": {"title": "", "url": "", "image_url": ""},
-            "all_posts_count": 0,
             "source_url": "https://www.facebook.com/pannon.nagykanizsa",
             "status": "error",
             "error": str(e),
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
         }
 
+    # ---------- ALWAYS PRINT JSON ----------
     print(json.dumps(result, ensure_ascii=False))
     sys.stdout.flush()
-
-def extract_post_data(article):
-    """Extract data from single article - returns None if invalid"""
-    try:
-        # TITLE - multiple selectors, pick longest valid text
-        title = ""
-        text_selectors = [
-            'div[data-ad-preview="message"] span',
-            'div[dir="auto"] span',
-            'div.x1lliihq span',
-            'span.x1lliihq',
-            'div[data-testid="post_message"] span',
-            'div[style*="font"] span'
-        ]
-        
-        for sel in text_selectors:
-            try:
-                elems = article.find_elements(By.CSS_SELECTOR, sel)
-                for elem in elems[:3]:  # First 3 spans
-                    text = elem.text.strip()
-                    if 15 < len(text) < 500 and text not in title:  # Valid length
-                        title = text
-                        break
-                if len(title) > 15:
-                    break
-            except:
-                continue
-
-        if not title:
-            return None
-
-        # URL - multiple link selectors
-        post_url = ""
-        link_selectors = [
-            'a[href*="/posts/"]',
-            'a[href*="/pfbid"]', 
-            'a[href*="/permalink"]',
-            'a[role="link"]'
-        ]
-        for link_sel in link_selectors:
-            links = article.find_elements(By.CSS_SELECTOR, link_sel)
-            if links:
-                href = links[0].get_attribute("href")
-                if href and ("/posts/" in href or "/pfbid" in href):
-                    post_url = urljoin("https://www.facebook.com", href).split("?")[0]
-                    break
-
-        # IMAGE - Facebook CDN
-        image_url = ""
-        img_selectors = [
-            'img[src*="scontent"]',
-            'img[src*="fbcdn"]', 
-            'img[data-imgperflogname*="image"]'
-        ]
-        for img_sel in img_selectors:
-            imgs = article.find_elements(By.CSS_SELECTOR, img_sel)
-            for img in imgs:
-                src = img.get_attribute("src")
-                if src and ("scontent" in src or "fbcdn" in src) and "emoji" not in src.lower():
-                    image_url = src
-                    break
-            if image_url:
-                break
-
-        return {
-            "title": title[:500],
-            "url": post_url,
-            "image_url": image_url
-        }
-    except:
-        return None
 
 if __name__ == "__main__":
     scrape_facebook_posts()

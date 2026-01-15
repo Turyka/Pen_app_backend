@@ -13,8 +13,8 @@ use Illuminate\Database\Schema\Blueprint;
 class FacebookController extends Controller
 {
     public function store(Request $request)
-{
-    if ($request->query('titkos') !== env('API_SECRET')) {
+    {
+           if ($request->query('titkos') !== env('API_SECRET')) {
         return response()->json([
             'success' => false,
             'error' => 'Unauthorized'
@@ -22,6 +22,7 @@ class FacebookController extends Controller
     }
 
     $pythonPath = public_path('scrape_facebook.py');
+
     $cmd = sprintf('cd %s && python3 %s 2>&1', public_path(), basename($pythonPath));
     $output = shell_exec($cmd);
 
@@ -32,34 +33,44 @@ class FacebookController extends Controller
 
     $data = json_decode($output ?? '{}', true);
 
-    if (!$data || $data['status'] === 'error' || empty($data['latest_1']['title'])) {
+    if (!$data || $data['status'] === 'error') {
         return response()->json([
             'success' => false,
-            'error' => $data['error'] ?? 'No valid post found',
-            'all_posts_count' => $data['all_posts_count'] ?? 0,
-            'raw_output' => substr($output, 0, 500),
+            'error' => $data['error'] ?? 'No data',
+            'raw_output' => $output,
         ], 500);
     }
 
     $post = $data['latest_1'];
 
-    // Save ALWAYS if we have a valid title (no duplicate check needed)
-    DB::table('facebook_posts')->updateOrInsert(
-        ['url' => $post['url']],
-        [
-            'title' => $post['title'],
-            'image_url' => $post['image_url'],
-            'updated_at' => now()
-        ]
-    );
+    // ❌ Skip if same title already exists
+    $exists = DB::table('facebook_posts')
+        ->where('title', $post['title'])
+        ->exists();
+
+    if ($exists) {
+        return response()->json([
+            'success' => true,
+            'saved' => false,
+            'skipped' => true,
+            'reason' => 'Same title already exists'
+        ]);
+    }
+
+    // ✅ Save only if new
+    DB::table('facebook_posts')->insert([
+        'title' => $post['title'],
+        'url' => $post['url'],
+        'image_url' => $post['image_url'],
+        'updated_at' => now()
+    ]);
 
     return response()->json([
         'success' => true,
         'saved' => true,
-        'post' => $post,
-        'all_posts_found' => $data['all_posts_count']
+        'post' => $post
     ]);
-}
+    }
 
 
     public function facebookPostAPI(Request $request)
