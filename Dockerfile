@@ -9,6 +9,7 @@ RUN apk add --no-cache \
     wget \
     gnupg \
     python3 \
+    playwright \
     py3-pip \
     chromium \
     chromium-chromedriver \

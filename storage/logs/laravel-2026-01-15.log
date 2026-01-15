@@ -2,3 +2,5 @@
 [2026-01-15 15:23:56] staging.INFO: TikTok scrape command {"output_length":1775} 
 [2026-01-15 15:27:21] staging.INFO: TikTok scrape command {"cmd":"cd E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\public && python3 scrape_tiktok.py 2>&1","output_length":1775} 
 [2026-01-15 15:44:36] staging.INFO: TikTok scrape command {"cmd":"cd E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\public && python3 scrape_tiktok.py 2>&1","output_length":1775} 
+[2026-01-15 16:47:39] staging.INFO: Facebook scrape command {"cmd":"cd E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\public && python3 scrape_facebook.py 2>&1","output_length":898} 
+[2026-01-15 16:50:05] staging.INFO: Facebook scrape command {"cmd":"cd E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\public && python3 scrape_facebook.py 2>&1","output_length":898} 
