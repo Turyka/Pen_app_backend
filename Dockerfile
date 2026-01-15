@@ -18,6 +18,8 @@ RUN apk update && apk add --no-cache \
     libc6-compat \
     && update-ca-certificates
 
+
+    
 # Upgrade pip and install Python packages
 RUN python3 -m ensurepip \
     && pip3 install --upgrade pip \
