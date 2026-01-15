@@ -1,21 +1,23 @@
 FROM richarvey/nginx-php-fpm:3.1.6
 
-# Install CA certs
-RUN apk update && apk add --no-cache ca-certificates && update-ca-certificates
-
-# Install Python + Playwright deps
-RUN apk add --no-cache \
+# Install system deps first
+RUN apk update && apk add --no-cache \
+    ca-certificates \
     python3 \
     py3-pip \
+    py3-setuptools \
+    py3-wheel \
     wget \
-    gnupg
+    gnupg \
+    && update-ca-certificates
 
-# Install Python packages
-RUN pip3 install --no-cache-dir \
-    playwright \
-    requests
+# Install Python packages (Alpine-compatible)
+RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip3 install --no-cache-dir \
+    requests \
+    && pip3 install --no-cache-dir playwright==1.40.0
 
-# Install Playwright Chromium
+# Install Playwright browser deps
 RUN python3 -m playwright install-deps && \
     python3 -m playwright install chromium
 
