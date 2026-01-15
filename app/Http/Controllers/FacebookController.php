@@ -12,6 +12,7 @@ use Illuminate\Database\Schema\Blueprint;
 
 class FacebookController extends Controller
 {
+
     public function store(Request $request)
     {
            if ($request->query('titkos') !== env('API_SECRET')) {
