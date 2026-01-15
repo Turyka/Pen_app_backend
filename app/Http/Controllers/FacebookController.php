@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\FacebookPost;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
 
 class FacebookController extends Controller
 {
@@ -81,4 +83,20 @@ class FacebookController extends Controller
     }   
 
 
+
+
+    public function refreshFacebookPosts()
+    {
+        Schema::dropIfExists('facebook_posts');
+
+        Schema::create('facebook_posts', function (Blueprint $table) {
+            $table->id();
+            $table->text('title');
+            $table->string('url');
+            $table->text('image_url')->nullable();
+            $table->timestamps();
+        });
+
+        return 'facebook_posts refreshed';
+    }
 }

@@ -16,6 +16,7 @@ use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\TiktokController;
 use App\Http\Controllers\FacebookController;
 
+Route::get('/refresh-facebook-posts', [FacebookController::class, 'refreshFacebookPosts']);
 
 Route::get('/scrape-tiktok', [TiktokController::class, 'store']);
 
