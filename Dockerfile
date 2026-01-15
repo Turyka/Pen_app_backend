@@ -12,11 +12,33 @@ RUN apk add --no-cache \
     py3-pip \
     chromium \
     chromium-chromedriver \
-    && pip3 install selenium
+    && pip3 install selenium webdriver-manager
 
-# Set Chrome options
+# Install Chrome dependencies for Alpine
+RUN apk add --no-cache \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    font-notice-ttf \
+    fontconfig \
+    dbus
+
+# Setup Chrome environment
 ENV CHROME_BIN=/usr/bin/chromium-browser
-ENV CHROME_DRIVER=/usr/bin/chromedriver
+ENV CHROMEDRIVER_BIN=/usr/bin/chromedriver
+ENV DISPLAY=:99
+
+# Create symlinks for compatibility
+RUN ln -sf /usr/bin/chromium-browser /usr/bin/google-chrome \
+    && ln -sf /usr/bin/chromium-browser /usr/bin/chrome
+
+# Test Chrome installation
+RUN echo "Testing Chrome installation..." \
+    && chromium-browser --version \
+    && chromedriver --version
 
 COPY . .
 
