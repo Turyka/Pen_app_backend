@@ -9,11 +9,11 @@ RUN apk add --no-cache \
     wget \
     gnupg \
     python3 \
-    playwright \
     py3-pip \
     chromium \
     chromium-chromedriver \
-    && pip3 install selenium
+    && pip3 install selenium playwright \
+    && playwright install chromium
 
 # Set Chrome options
 ENV CHROME_BIN=/usr/bin/chromium-browser
