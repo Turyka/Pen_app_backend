@@ -6,6 +6,8 @@ use App\Http\Controllers\HirController;
 use App\Http\Controllers\NaptarController;
 use App\Http\Controllers\EszkozokController;
 use App\Http\Controllers\KozlemenyController;
+use App\Http\Controllers\FacebookController;
+use App\Http\Controllers\TiktokController;
 use Illuminate\Http\Request;
 
     //Route::get('/felhasznalo', [UserController::class, 'getUsers']);
@@ -23,6 +25,10 @@ use Illuminate\Http\Request;
     Route::patch('/update/ertesites/{id}', [EszkozokController::class, 'update']);
     // eszkozok
     Route::post('/eszkozok', [EszkozokController::class, 'store']);
+
+    Route::get('/facebook-post', [FacebookController::class, 'facebookPostAPI']);
+
+    Route::get('/tiktok-post', [TiktokController::class, 'TiktokPostAPI']);
 
     /*
     Route::middleware(['auth:sanctum'])->group(function () {

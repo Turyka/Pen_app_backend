@@ -13,74 +13,14 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\KepfeltoltesController;
 use App\Http\Controllers\DatabaseController;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\TiktokController;
+use App\Http\Controllers\FacebookController;
 
 
-
-Route::get('/scrape-facebook', function (\Illuminate\Http\Request $request) {
-
-    // 🔐 Check API secret
-    if ($request->query('titkos') !== env('API_SECRET')) {
-        return response()->json([
-            'success' => false,
-            'error' => 'Unauthorized'
-        ], 403);
-    }
-
-    $pythonPath = public_path('scrape_facebook.py');
-
-    $cmd = sprintf('cd %s && python3 %s 2>&1', public_path(), basename($pythonPath));
-    $output = shell_exec($cmd);
-
-    Log::info('Facebook scrape command', [
-        'cmd' => $cmd,
-        'output_length' => strlen($output ?? '')
-    ]);
-
-    $data = json_decode($output ?? '{}', true);
-
-    if (!$data || $data['status'] === 'error') {
-        return response()->json([
-            'success' => false,
-            'error' => $data['error'] ?? 'No data',
-            'raw_output' => $output,
-        ], 500);
-    }
-
-    $post = $data['latest_1'];
-
-    // ❌ Skip if same title already exists
-    $exists = DB::table('facebook_posts')
-        ->where('title', $post['title'])
-        ->exists();
-
-    if ($exists) {
-        return response()->json([
-            'success' => true,
-            'saved' => false,
-            'skipped' => true,
-            'reason' => 'Same title already exists'
-        ]);
-    }
-
-    // ✅ Save only if new
-    DB::table('facebook_posts')->insert([
-        'title' => $post['title'],
-        'url' => $post['url'],
-        'image_url' => $post['image_url'],
-        'updated_at' => now()
-    ]);
-
-    return response()->json([
-        'success' => true,
-        'saved' => true,
-        'post' => $post
-    ]);
-});
+Route::get('/scrape-tiktok', [TiktokController::class, 'store']);
 
 
-Route::get('/instagram-crawl', [App\Http\Controllers\InstaCrawlerController::class, 'crawl']);
+Route::get('/scrape-facebook', [FacebookController::class, 'store']);
 
 // Commandok
 Route::get('/commandok', [KezdoController::class, 'command'])->middleware('auth');
