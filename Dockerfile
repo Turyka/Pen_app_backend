@@ -1,39 +1,45 @@
 FROM richarvey/nginx-php-fpm:3.1.6
 
-# Install system deps first
+# System deps + BUILD ESSENTIALS (critical for Alpine)
 RUN apk update && apk add --no-cache \
     ca-certificates \
     python3 \
     py3-pip \
     py3-setuptools \
     py3-wheel \
+    gcc \
+    g++ \
+    python3-dev \
+    musl-dev \
+    linux-headers \
     wget \
     gnupg \
     && update-ca-certificates
 
-# Install Python packages (Alpine-compatible)
-RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip3 install --no-cache-dir \
-    requests \
-    && pip3 install --no-cache-dir playwright==1.40.0
+# Create virtualenv (fixes root warnings + isolation)
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Install Playwright browser deps
-RUN python3 -m playwright install-deps && \
-    python3 -m playwright install chromium
+# Upgrade pip + install (NO VERSION PIN - let it pick Alpine-compatible)
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir requests && \
+    pip install --no-cache-dir playwright
+
+# Playwright browsers
+RUN playwright install-deps && \
+    playwright install chromium
+
+# Cleanup build deps
+RUN apk del gcc g++ python3-dev musl-dev linux-headers
 
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 ENV PLAYWRIGHT_BROWSERS_PATH=0
 
-# Copy app
 COPY . /var/www/html
 WORKDIR /var/www/html
 
-# Laravel config
 ENV SKIP_COMPOSER 1
 ENV WEBROOT /var/www/html/public
-ENV PHP_ERRORS_STDERR 1
-ENV RUN_SCRIPTS 1
 ENV APP_ENV production
-ENV APP_DEBUG false
 
 CMD ["/start.sh"]
