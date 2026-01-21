@@ -2,7 +2,6 @@
 """
 Facebook Scraper - Laravel Compatible
 Returns ALWAYS valid JSON
-SIMPLE FIX FOR LINUX
 """
 
 import sys
@@ -28,30 +27,15 @@ def scrape_facebook_posts():
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--window-size=1920,1080")
-        chrome_options.add_argument("--disable-images")
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option("useAutomationExtension", False)
         chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
-        # FIX 1: TELL SELENIUM WHERE CHROMEDRIVER IS ON LINUX
+        # Auto-detect chromedriver
         service = None
-        # Check if we're on Linux (Render/Alpine)
-        if os.name == 'posix':  # Linux/Unix
-            # Common Linux chromedriver paths
-            linux_paths = [
-                '/usr/bin/chromedriver',      # Alpine default
-                '/usr/local/bin/chromedriver', # Common install
-                '/usr/lib/chromium/chromedriver',
-            ]
-            for path in linux_paths:
-                if os.path.exists(path):
-                    service = Service(executable_path=path)
-                    break
-        
-        # If no Linux path found or on Windows, use default
-        if service is None:
-            service = Service()  # Auto-detect on Windows
+        if os.path.exists('/usr/bin/chromedriver'):
+            service = Service('/usr/bin/chromedriver')
 
         driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
@@ -59,13 +43,11 @@ def scrape_facebook_posts():
         url = "https://www.facebook.com/pannon.nagykanizsa"
         driver.get(url)
 
-        # FIX 2: INCREASE WAIT TIME FOR LINUX (SLOWER)
-        wait_time = 10 if os.name == 'posix' else 5  # Linux: 10 sec, Windows: 5 sec
-        time.sleep(wait_time)
+        time.sleep(5)
 
         # Force scroll + image load
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(2)
+        time.sleep(4)
 
         driver.execute_script("""
             window.scrollTo(0, 0);
@@ -75,7 +57,7 @@ def scrape_facebook_posts():
                 });
             }, 1500);
         """)
-        time.sleep(2)
+        time.sleep(3)
 
         posts = []
         selectors = ['div[role="article"]', 'div[data-pagelet^="FeedUnit"]', '[data-testid="fbfeed_story"]']
@@ -134,17 +116,17 @@ def scrape_facebook_posts():
         driver.quit()
 
         result = {
-            "success": True,
-            "saved": True,
-            "post": posts[0] if posts else {"title": "", "url": "", "image_url": ""},
+            "latest_1": posts[0] if posts else {"title": "", "url": "", "image_url": ""},
+            "source_url": url,
+            "status": "success",
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
         }
 
     except Exception as e:
         result = {
-            "success": False,
-            "saved": False,
-            "post": {"title": "", "url": "", "image_url": ""},
+            "latest_1": {"title": "", "url": "", "image_url": ""},
+            "source_url": "https://www.facebook.com/pannon.nagykanizsa",
+            "status": "error",
             "error": str(e),
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
         }
