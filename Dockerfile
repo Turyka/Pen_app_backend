@@ -15,17 +15,19 @@ RUN apk add --no-cache \
     git \
     && pip3 install selenium
 
-# Install Playwright via npm FIRST
-RUN npm install -g playwright && \
-    npx playwright install chromium
-
 # Install Playwright Python package from GitHub
 RUN pip3 install git+https://github.com/microsoft/playwright-python.git
 
-# Force create the driver link (remove if exists first)
-RUN rm -rf /usr/lib/python3.11/site-packages/playwright/driver && \
-    mkdir -p /usr/lib/python3.11/site-packages/playwright/driver && \
-    ln -sf /usr/local/lib/node_modules/playwright /usr/lib/python3.11/site-packages/playwright/driver/node
+# Install Playwright browser
+RUN npx playwright install chromium
+
+# FIX PERMISSIONS - Give execute permission to Playwright driver
+RUN find /root/.cache/ms-playwright -type f -name "chrome" -o -name "chromium" -o -name "node" | xargs chmod +x || true && \
+    find /usr/lib/python3.11/site-packages/playwright -type f -name "*.py" | xargs chmod +x || true
+
+# Create and set permissions for the driver directory
+RUN mkdir -p /usr/lib/python3.11/site-packages/playwright/driver && \
+    chmod 755 /usr/lib/python3.11/site-packages/playwright/driver
 
 # Set environment variables
 ENV CHROME_BIN=/usr/bin/chromium-browser
