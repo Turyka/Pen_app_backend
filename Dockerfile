@@ -16,17 +16,28 @@ RUN apk add --no-cache \
     npm \
     && pip3 install selenium
 
-# Install Playwright via npm (Node.js version - more reliable)
+# Install Playwright via npm FIRST (this installs the browser)
 RUN npm install -g playwright && \
     npx playwright install chromium
 
-# Now install Python Playwright package
+# IMPORTANT: Install Python build dependencies BEFORE installing playwright Python package
+RUN apk add --no-cache --virtual .build-deps \
+    gcc \
+    musl-dev \
+    python3-dev \
+    libffi-dev \
+    openssl-dev
+
+# Now install Python Playwright package with build dependencies available
 RUN pip3 install playwright
+
+# Clean up build dependencies
+RUN apk del .build-deps
 
 # Set environment variables
 ENV CHROME_BIN=/usr/bin/chromium-browser
 ENV CHROME_DRIVER=/usr/bin/chromedriver
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
 
 COPY . .
 
