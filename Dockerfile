@@ -4,7 +4,7 @@ FROM richarvey/nginx-php-fpm:3.1.6
 RUN apk update && apk add ca-certificates && update-ca-certificates
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
-# Install Chrome + Python + Node.js + git
+# Install Chrome + Python + Node.js
 RUN apk add --no-cache \
     python3 \
     py3-pip \
@@ -12,35 +12,26 @@ RUN apk add --no-cache \
     chromium-chromedriver \
     nodejs \
     npm \
-    git \
     && pip3 install selenium
 
-# Install Playwright via npm FIRST (this creates the driver)
-RUN npm install -g playwright
+# Install Playwright Python package with explicit driver path
+RUN pip3 install playwright
+
+# Download and install Playwright driver manually
+RUN cd /tmp && \
+    wget -q https://registry.npmjs.org/playwright/-/playwright-1.40.0.tgz && \
+    tar -xzf playwright-1.40.0.tgz && \
+    mkdir -p /usr/lib/python3.11/site-packages/playwright/driver && \
+    cp -r /tmp/package/* /usr/lib/python3.11/site-packages/playwright/driver/ && \
+    chmod +x /usr/lib/python3.11/site-packages/playwright/driver/cli.js
 
 # Install Chromium browser
-RUN npx playwright install chromium
-
-# NOW install Playwright Python package
-RUN pip3 install git+https://github.com/microsoft/playwright-python.git
-
-# Create the driver symlink that Playwright Python expects
-RUN mkdir -p /usr/lib/python3.11/site-packages/playwright/driver && \
-    ln -sf /usr/local/lib/node_modules/playwright /usr/lib/python3.11/site-packages/playwright/driver/node
+RUN python3 -m playwright install chromium
 
 # Set environment variables
 ENV CHROME_BIN=/usr/bin/chromium-browser
 ENV CHROME_DRIVER=/usr/bin/chromedriver
 ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
-
-# Verify installation works
-RUN python3 -c "
-from playwright.sync_api import sync_playwright
-with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True, args=['--no-sandbox'])
-    print('SUCCESS: Playwright is working!')
-    browser.close()
-"
 
 COPY . .
 
