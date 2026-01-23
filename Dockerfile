@@ -1,41 +1,39 @@
-FROM php:8.2-fpm-bookworm
+FROM richarvey/nginx-php-fpm:3.1.6
 
-# Install system deps
-RUN apt-get update && apt-get install -y \
-    nginx \
-    ca-certificates \
+# Install CA certificates
+RUN apk update && apk add --no-cache ca-certificates && update-ca-certificates
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+
+# Install Chrome + Python + Playwright
+RUN apk add --no-cache \
+    wget \
+    gnupg \
     python3 \
-    python3-pip \
+    py3-pip \
     chromium \
-    chromium-driver \
-    fonts-liberation \
-    libnss3 \
-    libatk-bridge2.0-0 \
-    libgtk-3-0 \
-    libxss1 \
-    libasound2 \
-    supervisor \
-    && rm -rf /var/lib/apt/lists/*
+    chromium-chromedriver \
+    py3-playwright \
+    && pip3 install selenium
 
-# PHP extensions
-RUN docker-php-ext-install pdo pdo_mysql
+# Set Chrome / Playwright options
+ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV CHROME_DRIVER=/usr/bin/chromedriver
 
-# Python deps
-RUN pip3 install --no-cache-dir selenium playwright
-
-# Install Playwright browser
-RUN playwright install chromium
-
-# Nginx config
-COPY docker/nginx.conf /etc/nginx/nginx.conf
-
-# App
-WORKDIR /var/www/html
 COPY . .
 
-# Permissions
-RUN chown -R www-data:www-data /var/www/html
+# Image config
+ENV SKIP_COMPOSER=1
+ENV WEBROOT=/var/www/html/public
+ENV PHP_ERRORS_STDERR=1
+ENV RUN_SCRIPTS=1
+ENV REAL_IP_HEADER=1
 
-EXPOSE 10000
+# Laravel config
+ENV APP_ENV=production
+ENV APP_DEBUG=false
+ENV LOG_CHANNEL=stderr
 
-CMD ["supervisord", "-n"]
+# Allow composer to run as root
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
+CMD ["/start.sh"]
