@@ -2,8 +2,6 @@ FROM richarvey/nginx-php-fpm:3.1.6
 
 # Install CA certificates
 RUN apk update && apk add ca-certificates && update-ca-certificates
-
-# Set SSL cert environment
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 # Install Chrome + Python + Node.js + git
@@ -17,25 +15,21 @@ RUN apk add --no-cache \
     git \
     && pip3 install selenium
 
-# Install Playwright browsers FIRST via npm (shared location)
+# Install Playwright Python package from GitHub ONLY (skip pip install playwright)
+RUN pip3 install git+https://github.com/microsoft/playwright-python.git
+
+# Install Playwright browser via npm
 RUN npm install -g playwright && \
-    npx playwright install chromium --with-deps
+    npx playwright install chromium
 
-# Install Playwright Python (let it handle its own driver setup)
-RUN pip3 install playwright
-
-# Create proper driver symlink that Playwright expects
+# Create the driver directory that Playwright Python expects
 RUN mkdir -p /usr/lib/python3.11/site-packages/playwright/driver && \
-    ln -s /usr/local/lib/node_modules/playwright /usr/lib/python3.11/site-packages/playwright/driver/node
+    ln -sf /usr/local/lib/node_modules/playwright /usr/lib/python3.11/site-packages/playwright/driver/node
 
-# Fix Node.js executable permissions in the playwright package
-RUN chmod +x /usr/local/lib/node_modules/playwright/bin/playwright \
-    && find /usr/local/lib/node_modules/playwright -name "*.js" -type f -executable -exec chmod +x {} \; || true
-
-# Playwright environment variables
+# Set environment variables
 ENV CHROME_BIN=/usr/bin/chromium-browser
-ENV PLAYWRIGHT_BROWSERS_PATH=/opt/render/project/.cache/playwright
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV CHROME_DRIVER=/usr/bin/chromedriver
+ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
 
 COPY . .
 
