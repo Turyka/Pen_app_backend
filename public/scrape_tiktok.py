@@ -25,7 +25,7 @@ def main():
         with sync_playwright() as p:
             context = p.chromium.launch_persistent_context(
                 temp_dir,
-                headless=False,
+                headless=True,
                 args=['--no-sandbox', '--disable-blink-features=AutomationControlled'],
                 viewport={'width': 1366, 'height': 768}
             )
