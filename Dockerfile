@@ -22,14 +22,18 @@ RUN pip3 install git+https://github.com/microsoft/playwright-python.git
 RUN npm install -g playwright && \
     npx playwright install chromium
 
-# Create the driver directory that Playwright Python expects
+# Create the driver directory and symlink with proper permissions
 RUN mkdir -p /usr/lib/python3.11/site-packages/playwright/driver && \
-    ln -sf /usr/local/lib/node_modules/playwright /usr/lib/python3.11/site-packages/playwright/driver/node
+    cp -r /usr/local/lib/node_modules/playwright /usr/lib/python3.11/site-packages/playwright/driver/node && \
+    chmod +x /usr/lib/python3.11/site-packages/playwright/driver/node/bin/*.js && \
+    chmod +x /usr/lib/python3.11/site-packages/playwright/driver/node/package/bin/playwright && \
+    find /usr/lib/python3.11/site-packages/playwright/driver/node -name "*.js" -type f -exec chmod +x {} \; || true
 
 # Set environment variables
 ENV CHROME_BIN=/usr/bin/chromium-browser
 ENV CHROME_DRIVER=/usr/bin/chromedriver
 ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
+ENV PLAYWRIGHT_NODEJS_PATH=/usr/lib/python3.11/site-packages/playwright/driver/node
 
 COPY . .
 

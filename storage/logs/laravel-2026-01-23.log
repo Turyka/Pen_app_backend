@@ -1,0 +1,5 @@
+[2026-01-23 22:40:57] staging.ERROR: Maximum execution time of 60 seconds exceeded {"exception":"[object] (Symfony\\Component\\ErrorHandler\\Error\\FatalError(code: 0): Maximum execution time of 60 seconds exceeded at E:/Egyetem/Pannon Egyetem dolgok/Pen_app_backend/app/Http/Controllers/TiktokController.php:28)
+[stacktrace]
+#0 {main}
+"} 
+[2026-01-23 22:42:45] staging.INFO: TikTok scrape command {"cmd":"cd E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\public && python3 scrape_tiktok.py pannonegyetem 2>&1","output_length":5062} 
