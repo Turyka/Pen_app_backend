@@ -4,7 +4,7 @@ FROM richarvey/nginx-php-fpm:3.1.6
 RUN apk update && apk add ca-certificates && update-ca-certificates
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
-# Keep your original working setup
+# Install Chrome + Python (keep your original working setup)
 RUN apk add --no-cache \
     wget \
     gnupg \
@@ -12,24 +12,16 @@ RUN apk add --no-cache \
     py3-pip \
     chromium \
     chromium-chromedriver \
+    nodejs \
+    npm \
     && pip3 install selenium
 
-# Install Playwright with all dependencies it needs
-RUN apk add --no-cache \
-    # Common dependencies
-    libstdc++ \
-    # Playwright dependencies
-    nss \
-    freetype \
-    freetype-dev \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    fontconfig \
-    font-noto-emoji
+# Install Playwright via npm (more reliable)
+RUN npm install -g playwright && playwright install chromium
 
-# Install Playwright
-RUN pip3 install playwright && playwright install chromium
+# OR if you prefer Python version, update pip first:
+# RUN pip3 install --upgrade pip setuptools wheel
+# RUN pip3 install playwright
 
 # Set Chrome options
 ENV CHROME_BIN=/usr/bin/chromium-browser
