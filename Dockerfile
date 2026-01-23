@@ -1,10 +1,10 @@
-FROM richarvey/nginx-php-fpm:3.1.6
+űFROM richarvey/nginx-php-fpm:3.1.6
 
 # Install CA certificates
 RUN apk update && apk add ca-certificates && update-ca-certificates
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
-# Install Chrome + Python + Node.js + git
+# Install Chrome + Python + Node.js + build tools
 RUN apk add --no-cache \
     wget \
     gnupg \
@@ -14,15 +14,22 @@ RUN apk add --no-cache \
     chromium-chromedriver \
     nodejs \
     npm \
-    git \
+    # Build dependencies for Playwright
+    gcc \
+    musl-dev \
+    python3-dev \
+    libffi-dev \
+    openssl-dev \
     && pip3 install selenium
 
-# Install Playwright Python package FROM GITHUB (this works!)
-RUN pip3 install git+https://github.com/microsoft/playwright-python.git
+# Upgrade pip
+RUN pip3 install --upgrade pip setuptools wheel
 
-# Install Playwright browser via npm (also works)
-RUN npm install -g playwright && \
-    npx playwright install chromium
+# Install Playwright Python package
+RUN pip3 install playwright
+
+# Install Playwright browsers
+RUN playwright install chromium
 
 # Set environment variables
 ENV CHROME_BIN=/usr/bin/chromium-browser
