@@ -1,42 +1,48 @@
-FROM mcr.microsoft.com/playwright:v1.58.0-noble
+FROM richarvey/nginx-php-fpm:3.1.6
 
-# Install PHP + nginx (Debian/Ubuntu)
-RUN apt-get update && apt-get install -y \
-    nginx \
-    php8.2 \
-    php8.2-fpm \
-    php8.2-cli \
-    php8.2-mysql \
-    php8.2-xml \
-    php8.2-mbstring \
-    php8.2-curl \
-    php8.2-zip \
-    supervisor \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+# Install CA certificates
+RUN apk update && apk add ca-certificates && update-ca-certificates
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
-# Install Python deps (Playwright already present)
-RUN pip3 install --no-cache-dir selenium
+# Install Chrome + Python for Facebook scraper
+RUN apk add --no-cache \
+    wget \
+    gnupg \
+    python3 \
+    py3-pip \
+    chromium \
+    chromium-chromedriver \
+    # Add Playwright dependencies:
+    nss \
+    freetype \
+    harfbuzz \
+    && pip3 install selenium playwright  # Add "playwright" here
 
-# App
-WORKDIR /var/www/html
+# Install Playwright browser (ADD THIS LINE)
+RUN playwright install chromium
+
+# Set Chrome options
+ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV CHROME_DRIVER=/usr/bin/chromedriver
+
+# Add Playwright path (OPTIONAL but helpful)
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
 COPY . .
 
-# Nginx config (YOU must provide this)
-COPY docker/nginx.conf /etc/nginx/nginx.conf
+# Image config
+ENV SKIP_COMPOSER 1
+ENV WEBROOT /var/www/html/public
+ENV PHP_ERRORS_STDERR 1
+ENV RUN_SCRIPTS 1
+ENV REAL_IP_HEADER 1
 
-# Permissions
-RUN chown -R www-data:www-data /var/www/html
+# Laravel config
+ENV APP_ENV production
+ENV APP_DEBUG false
+ENV LOG_CHANNEL stderr
 
-# Render port
-EXPOSE 10000
-ENV PORT=10000
+# Allow composer to run as root
+ENV COMPOSER_ALLOW_SUPERUSER 1
 
-# Laravel env
-ENV APP_ENV=production
-ENV APP_DEBUG=false
-ENV LOG_CHANNEL=stderr
-ENV COMPOSER_ALLOW_SUPERUSER=1
-
-# Start everything
-CMD ["supervisord", "-n"]
+CMD ["/start.sh"]
