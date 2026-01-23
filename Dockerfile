@@ -34,7 +34,7 @@ RUN chmod +x /usr/local/lib/node_modules/playwright/bin/playwright \
 
 # Playwright environment variables
 ENV CHROME_BIN=/usr/bin/chromium-browser
-ENV PLAYWRIGHT_BROWSERS_PATH=0
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/render/project/.cache/playwright
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 COPY . .
