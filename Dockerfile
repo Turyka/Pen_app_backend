@@ -14,13 +14,9 @@ RUN apk add --no-cache \
     chromium-chromedriver \
     && pip3 install selenium
 
-# Force install playwright with specific options
-RUN pip3 install --no-cache-dir --force-reinstall playwright
-
-# Verify installation
-RUN python3 -c "import playwright; print('Playwright version:', playwright.__version__)" || \
-    (echo "Direct import failed, trying pip install again..." && \
-     pip3 install playwright --no-cache-dir)
+# Update pip and try alternative PyPI index
+RUN pip3 install --upgrade pip && \
+    pip3 install --index-url https://pypi.org/simple/ playwright
 
 # Install Playwright browser
 RUN playwright install chromium
