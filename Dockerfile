@@ -10,7 +10,7 @@ RUN apk add --no-cache \
     py3-pip \
     chromium \
     chromium-chromedriver \
-    nodejs-current \
+    nodejs \
     npm \
     git \
     && pip3 install selenium
@@ -22,9 +22,10 @@ RUN npm install -g playwright && \
 # Install Playwright Python package from GitHub
 RUN pip3 install git+https://github.com/microsoft/playwright-python.git
 
-# Create the missing driver directory and link it
-RUN mkdir -p /usr/lib/python3.11/site-packages/playwright/driver && \
-    ln -s /usr/local/lib/node_modules/playwright /usr/lib/python3.11/site-packages/playwright/driver/node
+# Force create the driver link (remove if exists first)
+RUN rm -rf /usr/lib/python3.11/site-packages/playwright/driver && \
+    mkdir -p /usr/lib/python3.11/site-packages/playwright/driver && \
+    ln -sf /usr/local/lib/node_modules/playwright /usr/lib/python3.11/site-packages/playwright/driver/node
 
 # Set environment variables
 ENV CHROME_BIN=/usr/bin/chromium-browser
