@@ -1,43 +1,45 @@
-FROM richarvey/nginx-php-fpm:3.1.6
+FROM richarvey/nginx-php-fpm:debian
 
-# Install CA certificates
-RUN apk update && apk add ca-certificates && update-ca-certificates
-ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-
-# Install Chrome + Python dependencies for scrapers
-RUN apk add --no-cache \
+# Install system deps
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    python3 \
+    python3-pip \
     wget \
     gnupg \
-    python3 \
-    py3-pip \
     chromium \
-    chromium-chromedriver \
-    && pip3 install selenium playwright
+    chromium-driver \
+    fonts-liberation \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
+    libxss1 \
+    libasound2 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright browsers (headless Chrome)
-RUN playwright install chromium --with-deps
+# Python deps
+RUN pip3 install --no-cache-dir selenium playwright
 
-# Set Chrome/Playwright options
-ENV CHROME_BIN=/usr/bin/chromium-browser
+# Install Playwright browser
+RUN playwright install chromium
+
+# Env vars
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+ENV CHROME_BIN=/usr/bin/chromium
 ENV CHROME_DRIVER=/usr/bin/chromedriver
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
+
+# Laravel / nginx config
+ENV SKIP_COMPOSER=1
+ENV WEBROOT=/var/www/html/public
+ENV PHP_ERRORS_STDERR=1
+ENV RUN_SCRIPTS=1
+ENV REAL_IP_HEADER=1
+ENV APP_ENV=production
+ENV APP_DEBUG=false
+ENV LOG_CHANNEL=stderr
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
 COPY . .
-
-# Image config
-ENV SKIP_COMPOSER 1
-ENV WEBROOT /var/www/html/public
-ENV PHP_ERRORS_STDERR 1
-ENV RUN_SCRIPTS 1
-ENV REAL_IP_HEADER 1
-
-# Laravel config
-ENV APP_ENV production
-ENV APP_DEBUG false
-ENV LOG_CHANNEL stderr
-
-# Allow composer to run as root
-ENV COMPOSER_ALLOW_SUPERUSER 1
 
 CMD ["/start.sh"]
