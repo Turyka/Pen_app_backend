@@ -4,7 +4,7 @@ FROM richarvey/nginx-php-fpm:3.1.6
 RUN apk update && apk add ca-certificates && update-ca-certificates
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
-# Install Chrome + Python
+# Install Chrome + Python + Node.js + build tools
 RUN apk add --no-cache \
     wget \
     gnupg \
@@ -12,13 +12,15 @@ RUN apk add --no-cache \
     py3-pip \
     chromium \
     chromium-chromedriver \
+    nodejs \
+    npm \
+    git \
     && pip3 install selenium
 
-# Update pip and try alternative PyPI index
-RUN pip3 install --upgrade pip && \
-    pip3 install --index-url https://pypi.org/simple/ playwright
+# Install Playwright Python package from GitHub
+RUN pip3 install git+https://github.com/microsoft/playwright-python.git
 
-# Install Playwright browser
+# Install Playwright browsers
 RUN playwright install chromium
 
 # Set environment variables
