@@ -11,64 +11,65 @@ use Illuminate\Support\Str;
 
 class TiktokController extends Controller
 {
-    public function store(Request $request)
-    {
-        // Secret key check
-        if ($request->query('titkos') !== env('API_SECRET')) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Unauthorized'
-            ], 403);
-        }
-
-        $pythonPath = public_path('scrape_tiktok.py');
-
-        // Profile is hardcoded in Python script, no need to pass it
-        $cmd = sprintf('cd %s && python3 %s 2>&1', public_path(), basename($pythonPath));
-        $output = shell_exec($cmd);
-
-        Log::info('TikTok scrape command', [
-            'cmd' => $cmd,
-            'output_length' => strlen($output ?? '')
-        ]);
-
-        $data = json_decode($output ?? '{}', true);
-
-        if (!$data || $data['status'] !== 'success' || empty($data['posts'])) {
-            return response()->json([
-                'success' => false,
-                'error' => $data['error'] ?? 'Scraping failed',
-                'raw_output' => $output,
-            ], 500);
-        }
-
-        $saved = 0;
-        foreach ($data['posts'] as $post) {
-            if (!$post['url']) continue;
-
-            // Skip duplicates
-            $exists = DB::table('tiktok_posts')
-                ->where('url', $post['url'])
-                ->exists();
-
-            if ($exists) continue;
-
-            DB::table('tiktok_posts')->insert([
-                'url' => $post['url'],
-                'image_url' => $post['image_url'] ?? '',
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-
-            $saved++;
-        }
-
+public function store(Request $request)
+{
+    // Secret key check
+    if ($request->query('titkos') !== env('API_SECRET')) {
         return response()->json([
-            'success' => true,
-            'saved' => $saved,
-            'total_fetched' => count($data['posts'])
-        ]);
+            'success' => false,
+            'error' => 'Unauthorized'
+        ], 403);
     }
+
+    $profile = $request->input('profile', 'pannonegyetem'); // Optional profile param
+    $pythonPath = public_path('scrape_tiktok.py');
+
+    $cmd = sprintf('cd %s && python3 %s %s 2>&1', public_path(), basename($pythonPath), $profile);
+    $output = shell_exec($cmd);
+
+    Log::info('TikTok scrape command', [
+        'cmd' => $cmd,
+        'output_length' => strlen($output ?? '')
+    ]);
+
+    $posts = json_decode($output ?? '[]', true);
+
+    if (empty($posts)) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Scraping failed',
+            'raw_output' => $output,
+        ], 500);
+    }
+
+    $saved = 0;
+    foreach ($posts as $post) {
+        if (!$post['url']) continue;
+
+        // Skip duplicates
+        $exists = DB::table('tiktok_posts')
+            ->where('url', $post['url'])
+            ->exists();
+
+        if ($exists) continue;
+
+        DB::table('tiktok_posts')->insert([
+            'title' => $post['title'] ?? '',
+            'url' => $post['url'],
+            'image_url' => $post['image_url'] ?? '',
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+
+        $saved++;
+    }
+
+    return response()->json([
+        'success' => true,
+        'saved' => $saved,
+        'total_fetched' => count($posts)
+    ]);
+}
 
     public function TiktokPostAPI(Request $request)
     {

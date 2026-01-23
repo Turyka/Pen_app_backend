@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('tiktok_posts', function (Blueprint $table) {
             $table->id();
+            $table->string('title');
             $table->string('url');
             $table->text('image_url')->nullable();
             $table->timestamps();

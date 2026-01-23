@@ -17,19 +17,18 @@ class ScrapeTiktok extends Command
         $this->info("Scraping TikTok profile: $profile");
 
         $pythonPath = public_path('scrape_tiktok.py');
-        $cmd = sprintf('cd %s && python3 %s', public_path(), basename($pythonPath));
+        $cmd = sprintf('cd %s && python3 %s %s', public_path(), basename($pythonPath), $profile);
 
         $output = shell_exec($cmd);
-        $data = json_decode($output, true);
+        $posts = json_decode($output, true) ?? [];
 
-        if (!$data || $data['status'] !== 'success' || empty($data['posts'])) {
-            $this->error("Scraping failed");
-            Log::error('TikTok scrape failed', ['output' => $output]);
+        if (empty($posts)) {
+            $this->error("No data scraped");
             return 1;
         }
 
         $saved = 0;
-        foreach ($data['posts'] as $post) {
+        foreach ($posts as $post) {
             if (!$post['url']) continue;
 
             // Skip duplicates
@@ -37,6 +36,7 @@ class ScrapeTiktok extends Command
             if ($exists) continue;
 
             DB::table('tiktok_posts')->insert([
+                'title' => $post['title'] ?? '',
                 'url' => $post['url'],
                 'image_url' => $post['image_url'] ?? '',
                 'created_at' => now(),
@@ -46,7 +46,7 @@ class ScrapeTiktok extends Command
             $saved++;
         }
 
-        $this->info("✅ Scraping complete. New posts saved: $saved");
+        $this->info("✅ Scraping complete. New posts saved: $saved / " . count($posts));
         return 0;
     }
 }
