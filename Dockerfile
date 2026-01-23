@@ -2,6 +2,8 @@ FROM richarvey/nginx-php-fpm:3.1.6
 
 # Install CA certificates
 RUN apk update && apk add ca-certificates && update-ca-certificates
+
+# Set SSL cert environment
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 # Install Chrome + Python + Node.js + git
@@ -30,9 +32,9 @@ RUN mkdir -p /usr/lib/python3.11/site-packages/playwright/driver && \
 RUN chmod +x /usr/local/lib/node_modules/playwright/bin/playwright \
     && find /usr/local/lib/node_modules/playwright -name "*.js" -type f -executable -exec chmod +x {} \; || true
 
-# Set environment variables
+# Playwright environment variables
 ENV CHROME_BIN=/usr/bin/chromium-browser
-ENV PLAYWRIGHT_BROWSERS_PATH=0  # Use system browsers (npm installed)
+ENV PLAYWRIGHT_BROWSERS_PATH=0
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 COPY . .
