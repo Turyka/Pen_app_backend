@@ -1,4 +1,4 @@
-űFROM richarvey/nginx-php-fpm:3.1.6
+FROM richarvey/nginx-php-fpm:3.1.6
 
 # Install CA certificates
 RUN apk update && apk add ca-certificates && update-ca-certificates
