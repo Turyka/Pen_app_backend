@@ -4,7 +4,7 @@ FROM richarvey/nginx-php-fpm:3.1.6
 RUN apk update && apk add ca-certificates && update-ca-certificates
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
-# Install Chrome + Python for Facebook scraper
+# Keep your original working setup
 RUN apk add --no-cache \
     wget \
     gnupg \
@@ -12,20 +12,28 @@ RUN apk add --no-cache \
     py3-pip \
     chromium \
     chromium-chromedriver \
-    # Add Playwright dependencies:
+    && pip3 install selenium
+
+# Install Playwright with all dependencies it needs
+RUN apk add --no-cache \
+    # Common dependencies
+    libstdc++ \
+    # Playwright dependencies
     nss \
     freetype \
+    freetype-dev \
     harfbuzz \
-    && pip3 install selenium playwright  # Add "playwright" here
+    ca-certificates \
+    ttf-freefont \
+    fontconfig \
+    font-noto-emoji
 
-# Install Playwright browser (ADD THIS LINE)
-RUN playwright install chromium
+# Install Playwright
+RUN pip3 install playwright && playwright install chromium
 
 # Set Chrome options
 ENV CHROME_BIN=/usr/bin/chromium-browser
 ENV CHROME_DRIVER=/usr/bin/chromedriver
-
-# Add Playwright path (OPTIONAL but helpful)
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 COPY . .
