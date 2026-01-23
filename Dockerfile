@@ -15,25 +15,25 @@ RUN apk add --no-cache \
     git \
     && pip3 install selenium
 
-# Install Playwright Python package from GitHub ONLY (skip pip install playwright)
-RUN pip3 install git+https://github.com/microsoft/playwright-python.git
-
-# Install Playwright browser via npm
+# Install Playwright browsers FIRST via npm (shared location)
 RUN npm install -g playwright && \
-    npx playwright install chromium
+    npx playwright install chromium --with-deps
 
-# Create the driver directory and symlink with proper permissions
+# Install Playwright Python (let it handle its own driver setup)
+RUN pip3 install playwright
+
+# Create proper driver symlink that Playwright expects
 RUN mkdir -p /usr/lib/python3.11/site-packages/playwright/driver && \
-    cp -r /usr/local/lib/node_modules/playwright /usr/lib/python3.11/site-packages/playwright/driver/node && \
-    chmod +x /usr/lib/python3.11/site-packages/playwright/driver/node/bin/*.js && \
-    chmod +x /usr/lib/python3.11/site-packages/playwright/driver/node/package/bin/playwright && \
-    find /usr/lib/python3.11/site-packages/playwright/driver/node -name "*.js" -type f -exec chmod +x {} \; || true
+    ln -s /usr/local/lib/node_modules/playwright /usr/lib/python3.11/site-packages/playwright/driver/node
+
+# Fix Node.js executable permissions in the playwright package
+RUN chmod +x /usr/local/lib/node_modules/playwright/bin/playwright \
+    && find /usr/local/lib/node_modules/playwright -name "*.js" -type f -executable -exec chmod +x {} \; || true
 
 # Set environment variables
 ENV CHROME_BIN=/usr/bin/chromium-browser
-ENV CHROME_DRIVER=/usr/bin/chromedriver
-ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
-ENV PLAYWRIGHT_NODEJS_PATH=/usr/lib/python3.11/site-packages/playwright/driver/node
+ENV PLAYWRIGHT_BROWSERS_PATH=0  # Use system browsers (npm installed)
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 COPY . .
 
