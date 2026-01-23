@@ -1,34 +1,31 @@
-FROM richarvey/nginx-php-fpm:3.1.6
+# Use the official Playwright Python image (v1.50.0-noble)
+FROM mcr.microsoft.com/playwright/python:v1.50.0-noble
 
-RUN apk update && apk add ca-certificates && update-ca-certificates
-ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+# Install PHP, Nginx, and other dependencies
+RUN apt-get update && apt-get install -y \
+    nginx \
+    php-fpm \
+    git \
+    ca-certificates \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN apk add --no-cache \
-    python3 \
-    py3-pip \
-    chromium \
-    chromium-chromedriver \
-    nodejs \
-    git
-
-# Install Playwright Python properly
-RUN pip3 install playwright
-RUN playwright install chromium
-
+# Set environment variables
 ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+ENV WEBROOT=/var/www/html/public
+ENV APP_ENV=production
+ENV APP_DEBUG=false
+ENV LOG_CHANNEL=stderr
 
-COPY . .
+# Copy your app into the container
+COPY . /var/www/html/public
 
-ENV SKIP_COMPOSER 1
-ENV WEBROOT /var/www/html/public
-ENV PHP_ERRORS_STDERR 1
-ENV RUN_SCRIPTS 1
-ENV REAL_IP_HEADER 1
+# Expose HTTP port
+EXPOSE 80
 
-ENV APP_ENV production
-ENV APP_DEBUG false
-ENV LOG_CHANNEL stderr
-ENV COMPOSER_ALLOW_SUPERUSER 1
+# Ensure permissions
+RUN chown -R www-data:www-data /var/www/html/public
 
-CMD ["/start.sh"]
+# Start PHP-FPM and Nginx when container starts
+CMD ["bash", "-c", "service php7.4-fpm start && nginx -g 'daemon off;'"]
