@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: tiktok-scraper
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
