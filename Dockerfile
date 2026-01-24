@@ -1,14 +1,16 @@
 FROM richarvey/nginx-php-fpm:3.1.6
 
 # ------------------------
-# System dependencies
+# Install Python 3.11 explicitly
 # ------------------------
 RUN apk update && apk add --no-cache \
+    python3=3.11.* \
+    py3-pip \
+    py3-setuptools \
+    py3-wheel \
     ca-certificates \
     wget \
     gnupg \
-    python3 \
-    py3-pip \
     chromium \
     chromium-chromedriver \
     nss \
@@ -18,30 +20,22 @@ RUN apk update && apk add --no-cache \
     libstdc++ \
     bash
 
-ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+RUN python3 --version
+RUN pip3 install --upgrade pip
 
 # ------------------------
-# Python dependencies
+# Install Python libs
 # ------------------------
-RUN pip3 install --no-cache-dir \
-    selenium \
-    playwright
+RUN pip3 install --no-cache-dir selenium playwright==1.40.0
 
 # ------------------------
-# Install Playwright browsers
-# IMPORTANT: must run AFTER playwright install
+# Install Playwright browser
 # ------------------------
 RUN playwright install chromium --with-deps
 
-# ------------------------
-# Chrome paths (for Selenium)
-# ------------------------
 ENV CHROME_BIN=/usr/bin/chromium-browser
 ENV CHROME_DRIVER=/usr/bin/chromedriver
 
-# ------------------------
-# Laravel app
-# ------------------------
 COPY . .
 
 ENV SKIP_COMPOSER 1
@@ -53,7 +47,6 @@ ENV REAL_IP_HEADER 1
 ENV APP_ENV=production
 ENV APP_DEBUG=false
 ENV LOG_CHANNEL=stderr
-
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
 CMD ["/start.sh"]
