@@ -11,47 +11,30 @@ use Illuminate\Support\Str;
 
 class TiktokController extends Controller
 {
-public function store(Request $request)
-{
-    // Secret key check
+    public function store(Request $request)
+    {
     if ($request->query('titkos') !== env('API_SECRET')) {
-        return response()->json([
-            'success' => false,
-            'error' => 'Unauthorized'
-        ], 403);
+        return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
     }
 
-    $profile = $request->input('profile', 'pannonegyetem'); // Optional profile param
+    $profile = $request->input('profile', 'pannonegyetem');
     $pythonPath = public_path('scrape_tiktok.py');
 
+    // Run Python scraper synchronously
     $cmd = sprintf('cd %s && python3 %s %s 2>&1', public_path(), basename($pythonPath), $profile);
+
+    // Make sure this runs quickly
     $output = shell_exec($cmd);
-
-    Log::info('TikTok scrape command', [
-        'cmd' => $cmd,
-        'output_length' => strlen($output ?? '')
-    ]);
-
     $posts = json_decode($output ?? '[]', true);
-
-    if (empty($posts)) {
-        return response()->json([
-            'success' => false,
-            'error' => 'Scraping failed',
-            'raw_output' => $output,
-        ], 500);
-    }
 
     $saved = 0;
     foreach ($posts as $post) {
         if (!$post['url']) continue;
 
         // Skip duplicates
-        $exists = DB::table('tiktok_posts')
-            ->where('url', $post['url'])
-            ->exists();
-
-        if ($exists) continue;
+        if (DB::table('tiktok_posts')->where('url', $post['url'])->exists()) {
+            continue;
+        }
 
         DB::table('tiktok_posts')->insert([
             'title' => $post['title'] ?? '',
@@ -64,12 +47,12 @@ public function store(Request $request)
         $saved++;
     }
 
-    return response()->json([
-        'success' => true,
-        'saved' => $saved,
-        'total_fetched' => count($posts)
-    ]);
-}
+        return response()->json([
+            'success' => true,
+            'saved' => $saved,
+            'total_fetched' => count($posts)
+        ]);
+    }
 
     public function TiktokPostAPI(Request $request)
     {

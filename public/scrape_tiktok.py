@@ -40,9 +40,9 @@ def main():
         ))
 
         # Minimal scrolling – stop early if enough videos
-        for _ in range(4):
+        for _ in range(2):
             driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
-            time.sleep(0.8)
+            time.sleep(0.5)
 
             links = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/video/"]')
             if len(links) >= 5:

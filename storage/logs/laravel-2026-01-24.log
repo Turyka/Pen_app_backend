@@ -1,0 +1,3 @@
+[2026-01-24 12:13:58] staging.INFO: TikTok scrape command {"cmd":"cd E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\public && python3 scrape_tiktok.py pannonegyetem 2>&1","output_length":2560} 
+[2026-01-24 12:16:01] staging.INFO: TikTok scrape command {"cmd":"cd E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\public && python3 scrape_tiktok.py pannonegyetem 2>&1","output_length":2560} 
+[2026-01-24 12:16:22] staging.INFO: TikTok scrape command {"cmd":"cd E:\\Egyetem\\Pannon Egyetem dolgok\\Pen_app_backend\\public && python3 scrape_tiktok.py pannonegyetem 2>&1","output_length":2560} 
