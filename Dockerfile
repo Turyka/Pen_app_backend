@@ -1,32 +1,33 @@
-FROM richarvey/nginx-php-fpm:3.1.6
+FROM richarvey/nginx-php-frm:3.1.6
 
-# Install CA certificates
-RUN apk update && apk add ca-certificates && update-ca-certificates
-ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+# All deps in ONE layer (Render loves this)
+RUN apk update && apk add --no-cache \
+    ca-certificates chromium chromium-chromedriver python3 py3-pip nodejs npm git \
+    nss freetype harfbuzz ttf-freefont && \
+    update-ca-certificates
 
-# Install Chrome + Python + Selenium/Playwright deps
-RUN apk add --no-cache \
-    python3 py3-pip chromium chromium-chromedriver nodejs npm git \
-    nss freetype freetype-dev harfbuzz ca-certificates ttf-freefont
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    CHROME_BIN=/usr/bin/chromium-browser
 
-# Install Python packages
-RUN pip3 install selenium git+https://github.com/microsoft/playwright-python.git
+# Python FIRST
+RUN pip3 install --no-cache-dir selenium "git+https://github.com/microsoft/playwright-python.git"
 
-# Install npm playwright
-RUN npm install -g playwright && npx playwright install chromium
+# Node + Playwright browsers
+RUN npm install -g playwright && npx playwright install --with-deps chromium
 
-# Fix Playwright driver permissions (CRITICAL)
-RUN mkdir -p /usr/lib/python3.11/site-packages/playwright/driver/node && \
-    cp -a /usr/local/lib/node_modules/playwright/* /usr/lib/python3.11/site-packages/playwright/driver/node/ && \
-    find /usr/lib/python3.11/site-packages/playwright/driver/node -type f \( -name "*.js" -o -name "playwright" \) -exec chmod +x {} + 
+# Fix Playwright (idempotent - NO mkdir errors)
+RUN mkdir -p /usr/lib/python3.*/site-packages/playwright/driver/node 2>/dev/null || true && \
+    cp -a /usr/local/lib/node_modules/playwright/* /usr/lib/python3.*/site-packages/playwright/driver/node/ 2>/dev/null || true && \
+    find /usr/lib/python3.*/site-packages/playwright -type f \( -name "*.js" -o -name "playwright" \) -exec chmod +x {} + 2>/dev/null || true
 
-ENV CHROME_BIN=/usr/bin/chromium-browser PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
-
-# Copy Laravel + scrapers
+# Copy Laravel
 COPY . /var/www/html
+RUN chmod +x /var/www/html/public/*.py
 
-# Laravel config
-ENV SKIP_COMPOSER=1 WEBROOT=/var/www/html/public PHP_ERRORS_STDERR=1 RUN_SCRIPTS=1
-ENV APP_ENV=production APP_DEBUG=false LOG_CHANNEL=stderr COMPOSER_ALLOW_SUPERUSER=1
+ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright \
+    SKIP_COMPOSER=1 \
+    WEBROOT=/var/www/html/public \
+    PHP_ERRORS_STDERR=1 \
+    APP_ENV=production
 
 CMD ["/start.sh"]
