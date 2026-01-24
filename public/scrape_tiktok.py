@@ -26,7 +26,7 @@ def main():
             context = p.chromium.launch_persistent_context(
                 temp_dir,
                 headless=True,
-                args=['--no-sandbox', '--disable-blink-features=AutomationControlled'],
+                args=['--disable-blink-features=AutomationControlled'],
                 viewport={'width': 1366, 'height': 768}
             )
             page = context.new_page()
