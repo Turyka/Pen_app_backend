@@ -24,11 +24,15 @@ def main():
     try:
         with sync_playwright() as p:
             context = p.chromium.launch_persistent_context(
-                temp_dir,
-                headless=True,
-                args=['--disable-blink-features=AutomationControlled'],
-                viewport={'width': 1366, 'height': 768}
-            )
+            temp_dir,
+            headless=True,
+            args=[
+                '--disable-blink-features=AutomationControlled',
+                '--no-sandbox',
+                '--disable-dev-shm-usage'
+            ],
+            viewport={'width': 1366, 'height': 768}
+        )
             page = context.new_page()
             
             page.goto(f"https://www.tiktok.com/@{username}", wait_until='networkidle')

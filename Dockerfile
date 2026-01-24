@@ -1,33 +1,59 @@
-FROM richarvey/nginx-php-frm:3.1.6
+FROM richarvey/nginx-php-fpm:3.1.6
 
-# All deps in ONE layer (Render loves this)
+# ------------------------
+# System dependencies
+# ------------------------
 RUN apk update && apk add --no-cache \
-    ca-certificates chromium chromium-chromedriver python3 py3-pip nodejs npm git \
-    nss freetype harfbuzz ttf-freefont && \
-    update-ca-certificates
+    ca-certificates \
+    wget \
+    gnupg \
+    python3 \
+    py3-pip \
+    chromium \
+    chromium-chromedriver \
+    nss \
+    freetype \
+    harfbuzz \
+    ttf-freefont \
+    libstdc++ \
+    bash
 
-ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
-    CHROME_BIN=/usr/bin/chromium-browser
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
-# Python FIRST
-RUN pip3 install --no-cache-dir selenium "git+https://github.com/microsoft/playwright-python.git"
+# ------------------------
+# Python dependencies
+# ------------------------
+RUN pip3 install --no-cache-dir \
+    selenium \
+    playwright
 
-# Node + Playwright browsers
-RUN npm install -g playwright && npx playwright install --with-deps chromium
+# ------------------------
+# Install Playwright browsers
+# IMPORTANT: must run AFTER playwright install
+# ------------------------
+RUN playwright install chromium --with-deps
 
-# Fix Playwright (idempotent - NO mkdir errors)
-RUN mkdir -p /usr/lib/python3.*/site-packages/playwright/driver/node 2>/dev/null || true && \
-    cp -a /usr/local/lib/node_modules/playwright/* /usr/lib/python3.*/site-packages/playwright/driver/node/ 2>/dev/null || true && \
-    find /usr/lib/python3.*/site-packages/playwright -type f \( -name "*.js" -o -name "playwright" \) -exec chmod +x {} + 2>/dev/null || true
+# ------------------------
+# Chrome paths (for Selenium)
+# ------------------------
+ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV CHROME_DRIVER=/usr/bin/chromedriver
 
-# Copy Laravel
-COPY . /var/www/html
-RUN chmod +x /var/www/html/public/*.py
+# ------------------------
+# Laravel app
+# ------------------------
+COPY . .
 
-ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright \
-    SKIP_COMPOSER=1 \
-    WEBROOT=/var/www/html/public \
-    PHP_ERRORS_STDERR=1 \
-    APP_ENV=production
+ENV SKIP_COMPOSER 1
+ENV WEBROOT /var/www/html/public
+ENV PHP_ERRORS_STDERR 1
+ENV RUN_SCRIPTS 1
+ENV REAL_IP_HEADER 1
+
+ENV APP_ENV=production
+ENV APP_DEBUG=false
+ENV LOG_CHANNEL=stderr
+
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
 CMD ["/start.sh"]
