@@ -5,8 +5,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class TiktokPost extends Model
 {
-    protected $fillable = [
-     'url', 'image_url'
+   protected $fillable = [
+        'title',
+        'url',
+        'image_url'
+    ];
+    
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
     ];
 
 }

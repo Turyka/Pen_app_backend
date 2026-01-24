@@ -26,19 +26,16 @@ def create_driver():
     chrome_options.add_argument("--disable-extensions")
     chrome_options.add_argument("--disable-plugins")
     chrome_options.add_argument("--disable-images")
-    chrome_options.add_argument("--disable-javascript")  # TikTok needs JS, but speeds up
+    chrome_options.add_argument("--disable-javascript")
     chrome_options.add_argument("--window-size=1366,768")
     chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
-    chrome_options.page_load_strategy = 'eager'  # Faster page loading
+    chrome_options.page_load_strategy = 'eager'
     
-    # Render-specific optimizations
     chrome_options.add_argument("--memory-pressure-off")
     chrome_options.add_argument("--max_old_space_size=4096")
-    
-    # Set timeouts
     chrome_options.add_argument("--remote-debugging-port=9222")
     
     return webdriver.Chrome(options=chrome_options)
@@ -46,36 +43,31 @@ def create_driver():
 def main():
     username = sys.argv[1] if len(sys.argv) > 1 else "pannonegyetem"
     
-    # Set global timeouts to prevent hangs
     start_time = time.time()
-    max_runtime = 30  # 30 second max for Render
+    max_runtime = 30
     
     videos = []
     
-    for attempt in range(3):  # 3 retries
+    for attempt in range(3):
         driver = None
         try:
             print(f"Attempt {attempt + 1}/3", flush=True)
             driver = create_driver()
             
-            # Set script and page load timeouts
             driver.set_page_load_timeout(15)
             driver.implicitly_wait(5)
             
             print("Loading TikTok page...", flush=True)
             driver.get(f"https://www.tiktok.com/@{username}")
             
-            # Check if we timed out
             if time.time() - start_time > max_runtime:
                 print("Runtime limit exceeded", flush=True)
                 break
             
-            # Wait for content with longer timeout but aggressive fallback
             wait = WebDriverWait(driver, 10)
             links = []
             
             try:
-                # Try multiple selectors that work on TikTok
                 selectors = [
                     'a[href*="/video/"]',
                     '[data-e2e="user-post-item"] a',
@@ -92,7 +84,6 @@ def main():
                         continue
                         
                 if not links:
-                    # Fallback: scroll a bit to load content
                     driver.execute_script("window.scrollBy(0, 500);")
                     time.sleep(2)
                     links = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/video/"]')[:2]
@@ -101,7 +92,6 @@ def main():
                 print("Timeout waiting for videos", flush=True)
                 pass
             
-            # Extract video info
             for i, link in enumerate(links[:2]):
                 if time.time() - start_time > max_runtime:
                     break
@@ -114,14 +104,12 @@ def main():
                     title = ""
                     thumb = ""
                     
-                    # Try to get thumbnail/title
                     try:
                         img = link.find_element(By.TAG_NAME, "img")
                         title = (img.get_attribute("alt") or 
                                img.get_attribute("aria-label") or "")[:200]
                         thumb = img.get_attribute("src") or ""
                     except:
-                        # Fallback selectors
                         try:
                             title_elem = link.find_element(By.CSS_SELECTOR, "span, div[title]")
                             title = title_elem.text[:200]
@@ -139,7 +127,7 @@ def main():
                     continue
             
             print(f"Found {len(videos)} videos", flush=True)
-            break  # Success, exit retry loop
+            break
             
         except WebDriverException as e:
             print(f"WebDriver error (attempt {attempt + 1}): {str(e)}", flush=True)
@@ -152,9 +140,8 @@ def main():
                 except:
                     pass
         
-        time.sleep(2)  # Brief pause between retries
+        time.sleep(2)
     
-    # Ensure valid JSON output
     print(json.dumps(videos, ensure_ascii=False, indent=2))
     sys.stdout.flush()
 
