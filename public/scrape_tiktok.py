@@ -3,6 +3,8 @@ import sys, json, io
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
@@ -24,15 +26,21 @@ def main():
     chrome_options.add_argument("--window-size=1366,768")
     chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
 
-    # Start driver
     driver = webdriver.Chrome(options=chrome_options)
     videos = []
 
     try:
         driver.get(f"https://www.tiktok.com/@{username}")
 
-        # Grab only first 3 video links immediately, no scrolling
-        links = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/video/"]')[:3]
+        # Wait up to 5 seconds for at least 1 video link to appear
+        wait = WebDriverWait(driver, 5)
+        try:
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href*="/video/"]')))
+        except:
+            pass  # continue even if no video found
+
+        # Grab only first 2 video links
+        links = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/video/"]')[:2]
 
         for link in links:
             href = link.get_attribute("href")
@@ -53,10 +61,13 @@ def main():
                 "image_url": thumb
             })
 
-    except Exception:
-        pass
+    except Exception as e:
+        # If anything fails, return empty but valid JSON
+        videos = []
 
     driver.quit()
+
+    # Always return valid JSON
     print(json.dumps(videos, ensure_ascii=False))
     sys.stdout.flush()
 
