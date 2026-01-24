@@ -1,48 +1,59 @@
-FROM richarvey/nginx-php-fpm:3.1.6
+FROM richarvey/nginx-php-fpm:3.1.6-debian
 
 # ------------------------
-# Install Python 3.11 explicitly
+# System dependencies
 # ------------------------
-RUN apk update && apk add --no-cache \
-    python3=3.11.* \
-    py3-pip \
-    py3-setuptools \
-    py3-wheel \
-    ca-certificates \
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-setuptools \
+    python3-wheel \
     wget \
     gnupg \
     chromium \
-    chromium-chromedriver \
-    nss \
-    freetype \
-    harfbuzz \
-    ttf-freefont \
-    libstdc++ \
-    bash
-
-RUN python3 --version
-RUN pip3 install --upgrade pip
+    chromium-driver \
+    ca-certificates \
+    fonts-liberation \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
+    libxss1 \
+    libasound2 \
+    libgbm1 \
+    libdrm2 \
+    libxshmfence1 \
+    libu2f-udev \
+    xdg-utils \
+    --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/*
 
 # ------------------------
-# Install Python libs
+# Python libraries
 # ------------------------
-RUN pip3 install --no-cache-dir selenium playwright==1.40.0
+RUN pip3 install --upgrade pip \
+ && pip3 install selenium playwright
 
 # ------------------------
 # Install Playwright browser
 # ------------------------
-RUN playwright install chromium --with-deps
+RUN playwright install chromium
 
-ENV CHROME_BIN=/usr/bin/chromium-browser
+# ------------------------
+# Env for Selenium
+# ------------------------
+ENV CHROME_BIN=/usr/bin/chromium
 ENV CHROME_DRIVER=/usr/bin/chromedriver
 
+# ------------------------
+# Laravel app
+# ------------------------
 COPY . .
 
-ENV SKIP_COMPOSER 1
-ENV WEBROOT /var/www/html/public
-ENV PHP_ERRORS_STDERR 1
-ENV RUN_SCRIPTS 1
-ENV REAL_IP_HEADER 1
+ENV SKIP_COMPOSER=1
+ENV WEBROOT=/var/www/html/public
+ENV PHP_ERRORS_STDERR=1
+ENV RUN_SCRIPTS=1
+ENV REAL_IP_HEADER=1
 
 ENV APP_ENV=production
 ENV APP_DEBUG=false
