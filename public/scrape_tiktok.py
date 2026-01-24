@@ -1,94 +1,67 @@
 #!/usr/bin/env python3
-"""
-TikTok Scraper - CLEAN JSON OUTPUT
-title, url, image_url only - HEADLESS
-"""
-
-import json, sys, re, time, tempfile, shutil
-from playwright.sync_api import sync_playwright
-import io
+import sys, json, time, io
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 def clean_url(url):
-    if url.startswith('//'): return 'https:' + url
-    if not url.startswith('https://'): return 'https://www.tiktok.com' + url.lstrip('/')
+    if url.startswith('//'):
+        return 'https:' + url
+    if not url.startswith('http'):
+        return 'https://www.tiktok.com' + url
     return url
 
 def main():
     username = sys.argv[1] if len(sys.argv) > 1 else "pannonegyetem"
-    
-    temp_dir = tempfile.mkdtemp()
+
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_argument("--window-size=1366,768")
+    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+
+    driver = webdriver.Chrome(options=chrome_options)
+
     videos = []
-    
+
     try:
-        with sync_playwright() as p:
-            context = p.chromium.launch_persistent_context(
-            temp_dir,
-            headless=True,
-            args=[
-                '--disable-blink-features=AutomationControlled',
-                '--no-sandbox',
-                '--disable-dev-shm-usage'
-            ],
-            viewport={'width': 1366, 'height': 768}
-        )
-            page = context.new_page()
-            
-            page.goto(f"https://www.tiktok.com/@{username}", wait_until='networkidle')
-            time.sleep(5)
-            
-            # Scroll to load videos
-            for _ in range(10):
-                page.keyboard.press('End')
-                time.sleep(2)
-            
-            time.sleep(3)
-            
-            # Extract first 10 videos
-            video_elements = page.query_selector_all('a[href*="/video/"]')[:10]
-            
-            for link in video_elements:
-                try:
-                    href = link.get_attribute('href')
-                    if not href or '/video/' not in href:
-                        continue
-                    
-                    video_url = clean_url(href)
-                    
-                    # Title from alt text
-                    title = ""
-                    alt_img = link.query_selector('img[alt]')
-                    if alt_img:
-                        title = alt_img.get_attribute('alt') or ""
-                    
-                    # Thumbnail from tiktokcdn
-                    thumb = ""
-                    imgs = link.query_selector_all('img')
-                    for img in imgs:
-                        src = img.get_attribute('src') or img.get_attribute('data-src')
-                        if src and 'tiktokcdn' in src:
-                            thumb = src
-                            break
-                    
-                    if video_url:
-                        videos.append({
-                            "title": title[:200],
-                            "url": video_url,
-                            "image_url": thumb
-                        })
-                    
-                except:
-                    continue
-            
-            context.close()
-    
-    except:
+        driver.get(f"https://www.tiktok.com/@{username}")
+        time.sleep(5)
+
+        for _ in range(8):
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(2)
+
+        links = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/video/"]')
+
+        for link in links[:10]:
+            href = link.get_attribute("href")
+            if not href:
+                continue
+
+            title = ""
+            try:
+                img = link.find_element(By.TAG_NAME, "img")
+                title = img.get_attribute("alt") or ""
+                thumb = img.get_attribute("src") or ""
+            except:
+                thumb = ""
+
+            videos.append({
+                "title": title[:200],
+                "url": clean_url(href),
+                "image_url": thumb
+            })
+
+    except Exception:
         pass
-    
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
-    
+
+    driver.quit()
+
     print(json.dumps(videos, ensure_ascii=False))
     sys.stdout.flush()
 
