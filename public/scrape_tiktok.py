@@ -3,6 +3,8 @@ import sys, json, time, io
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
@@ -25,31 +27,43 @@ def main():
     chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
 
     driver = webdriver.Chrome(options=chrome_options)
+    wait = WebDriverWait(driver, 10)
 
     videos = []
 
     try:
         driver.get(f"https://www.tiktok.com/@{username}")
-        time.sleep(5)
 
-        for _ in range(8):
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(2)
+        # Wait until at least one video link appears
+        wait.until(EC.presence_of_element_located(
+            (By.CSS_SELECTOR, 'a[href*="/video/"]')
+        ))
 
-        links = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/video/"]')
+        # Minimal scrolling – stop early if enough videos
+        for _ in range(4):
+            driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
+            time.sleep(0.8)
 
-        for link in links[:10]:
+            links = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/video/"]')
+            if len(links) >= 5:
+                break
+
+        links = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/video/"]')[:5]
+
+        for link in links:
             href = link.get_attribute("href")
             if not href:
                 continue
 
             title = ""
+            thumb = ""
+
             try:
                 img = link.find_element(By.TAG_NAME, "img")
                 title = img.get_attribute("alt") or ""
                 thumb = img.get_attribute("src") or ""
             except:
-                thumb = ""
+                pass
 
             videos.append({
                 "title": title[:200],
