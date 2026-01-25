@@ -25,31 +25,19 @@ class TiktokController extends Controller
         // Debug: Log output
         Log::info('Python output: ' . substr($output, 0, 500));
         
-        // Try to find JSON array in output
-        $jsonStart = strpos($output, '[');
-        $jsonEnd = strrpos($output, ']');
-        
-        if ($jsonStart === false || $jsonEnd === false) {
-            return response()->json([
-                'success' => false,
-                'error' => 'No valid JSON array found',
-                'raw_output' => substr($output, 0, 1000)
-            ]);
-        }
-        
-        $jsonString = substr($output, $jsonStart, $jsonEnd - $jsonStart + 1);
-        $videos = json_decode($jsonString, true);
+        // Parse JSON OBJECT
+        $result = json_decode($output, true);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
             return response()->json([
                 'success' => false,
                 'error' => 'Invalid JSON: ' . json_last_error_msg(),
-                'raw_json' => $jsonString
+                'raw_output' => substr($output, 0, 1000)
             ]);
         }
         
-        // If no videos found
-        if (empty($videos)) {
+        // Check status
+        if ($result['status'] !== 'success') {
             return response()->json([
                 'success' => false,
                 'message' => 'No videos found from TikTok',
@@ -57,69 +45,69 @@ class TiktokController extends Controller
             ]);
         }
         
-        // Save to database - NO DUPLICATES
-        $savedCount = 0;
-        $duplicateCount = 0;
-        $errorCount = 0;
-        
-        foreach ($videos as $video) {
-            if (empty($video['url'])) {
-                continue; // Skip if no URL
-            }
-            
-            $url = $video['url'];
-            $title = $video['title'] ?? 'TikTok Video';
-            $imageUrl = $video['image_url'] ?? null;
-            
-            // Check if URL already exists in database
-            $exists = DB::table('tiktok_posts')
-                       ->where('url', $url)
-                       ->exists();
-            
-            if ($exists) {
-                $duplicateCount++;
-                Log::info('Duplicate skipped: ' . $url);
-                continue; // Skip duplicate
-            }
-            
-            try {
-                // Insert new video
-                DB::table('tiktok_posts')->insert([
-                    'title' => substr($title, 0, 255),
-                    'url' => $url,
-                    'image_url' => $imageUrl ? substr($imageUrl, 0, 500) : null,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-                
-                $savedCount++;
-                Log::info('Saved new video: ' . $url);
-                
-            } catch (\Exception $e) {
-                $errorCount++;
-                Log::error('Error saving video: ' . $e->getMessage(), ['video' => $video]);
-            }
+        $video = $result['latest_1'];
+        if (empty($video['url']) || empty($video['title'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No valid video data from TikTok',
+                'data' => $video
+            ]);
         }
         
-        // Return result
-        return response()->json([
-            'success' => true,
-            'message' => 'Scraping completed!',
-            'summary' => [
-                'videos_found' => count($videos),
-                'videos_saved' => $savedCount,
-                'duplicates_skipped' => $duplicateCount,
-                'errors' => $errorCount
-            ],
-            'videos' => $videos
-        ]);
+        // **FIXED**: Only use EXISTING columns
+        $url = $video['url'];
+        $title = $video['title'];
+        $imageUrl = $video['image_url'] ?? null;
+        
+        // Check for duplicate URL
+        $exists = DB::table('tiktok_posts')
+                   ->where('url', $url)
+                   ->exists();
+        
+        if ($exists) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Video already exists (no duplicate saved)',
+                'video' => $video,
+                'action' => 'skipped_duplicate'
+            ]);
+        }
+        
+        try {
+            // **COMPATIBLE** with existing table - NO new columns
+            DB::table('tiktok_posts')->insert([
+                'title' => substr($title, 0, 255),
+                'url' => $url,
+                'image_url' => $imageUrl ? substr($imageUrl, 0, 500) : null,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            
+            Log::info('✅ Saved new TikTok video: ' . $url);
+            
+            return response()->json([
+                'success' => true,
+                'message' => '🎉 New video saved successfully!',
+                'video' => $video,
+                'video_id' => $video['url']
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('❌ Error saving video: ' . $e->getMessage(), ['video' => $video]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Database save failed: ' . $e->getMessage(),
+                'video' => $video
+            ], 500);
+        }
     }
     
     public function show()
     {
-        // Show all saved videos
         $videos = DB::table('tiktok_posts')
                    ->orderBy('created_at', 'desc')
+                   ->limit(20)
                    ->get();
         
         return response()->json([
@@ -129,29 +117,22 @@ class TiktokController extends Controller
         ]);
     }
     
-    // Optional: Clear duplicates if any exist
-    public function clearDuplicates()
+    public function latest()
     {
-        // Find and delete duplicates (keep the oldest one)
-        $duplicates = DB::select("
-            SELECT url, COUNT(*) as count, MIN(id) as keep_id
-            FROM tiktok_posts 
-            GROUP BY url 
-            HAVING COUNT(*) > 1
-        ");
+        $video = DB::table('tiktok_posts')
+                  ->orderBy('created_at', 'desc')
+                  ->first();
         
-        $deleted = 0;
-        foreach ($duplicates as $dup) {
-            $deleted += DB::delete("
-                DELETE FROM tiktok_posts 
-                WHERE url = ? AND id != ?
-            ", [$dup->url, $dup->keep_id]);
+        if (!$video) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No videos in database'
+            ]);
         }
         
         return response()->json([
             'success' => true,
-            'message' => "Removed $deleted duplicate videos",
-            'duplicates_found' => count($duplicates)
+            'latest' => $video
         ]);
     }
 }

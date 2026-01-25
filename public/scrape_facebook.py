@@ -1,168 +1,139 @@
 #!/usr/bin/env python3
-import sys, json, io, time, os
+"""
+Facebook Scraper - Laravel Compatible
+Returns ALWAYS valid JSON
+"""
+
+import sys
+import json
+import time
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+import re
+from urllib.parse import urljoin
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.webdriver.chrome.service import Service
+import os
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+def scrape_facebook_posts():
+    """Main scraper - always returns JSON"""
+    try:
+        # Chrome Options (works everywhere)
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--window-size=1920,1080")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        chrome_options.add_experimental_option("useAutomationExtension", False)
+        chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
-def clean_url(url):
-    if url.startswith('//'):
-        return 'https:' + url
-    if not url.startswith('http'):
-        return 'https://www.tiktok.com' + url
-    return url
+        # Auto-detect chromedriver
+        service = None
+        if os.path.exists('/usr/bin/chromedriver'):
+            service = Service('/usr/bin/chromedriver')
 
-def create_driver():
-    chrome_options = Options()
-    chrome_options.add_argument("--headless=new")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--disable-dev-tools")
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-plugins")
-    chrome_options.add_argument("--disable-images")
-    chrome_options.add_argument("--disable-javascript")  # TikTok needs JS, but speeds up
-    chrome_options.add_argument("--window-size=1366,768")
-    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    chrome_options.add_experimental_option('useAutomationExtension', False)
-    chrome_options.page_load_strategy = 'eager'  # Faster page loading
-    
-    # Render-specific optimizations
-    chrome_options.add_argument("--memory-pressure-off")
-    chrome_options.add_argument("--max_old_space_size=4096")
-    
-    # Set timeouts
-    chrome_options.add_argument("--remote-debugging-port=9222")
-    
-    return webdriver.Chrome(options=chrome_options)
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
-def main():
-    username = sys.argv[1] if len(sys.argv) > 1 else "pannonegyetem"
-    
-    # Set global timeouts to prevent hangs
-    start_time = time.time()
-    max_runtime = 30  # 30 second max for Render
-    
-    videos = []
-    
-    for attempt in range(3):  # 3 retries
-        driver = None
-        try:
-            print(f"Attempt {attempt + 1}/3", flush=True)
-            driver = create_driver()
-            
-            # Set script and page load timeouts
-            driver.set_page_load_timeout(15)
-            driver.implicitly_wait(5)
-            
-            print("Loading TikTok page...", flush=True)
-            driver.get(f"https://www.tiktok.com/@{username}")
-            
-            # Check if we timed out
-            if time.time() - start_time > max_runtime:
-                print("Runtime limit exceeded", flush=True)
-                break
-            
-            # Wait for content with longer timeout but aggressive fallback
-            wait = WebDriverWait(driver, 10)
-            links = []
-            
-            try:
-                # Try multiple selectors that work on TikTok
-                selectors = [
-                    'a[href*="/video/"]',
-                    '[data-e2e="user-post-item"] a',
-                    'a[href*="@"][href*="/video/"]'
-                ]
-                
-                for selector in selectors:
-                    try:
-                        elements = driver.find_elements(By.CSS_SELECTOR, selector)
-                        if elements:
-                            links = elements[:2]
-                            break
-                    except:
-                        continue
-                        
-                if not links:
-                    # Fallback: scroll a bit to load content
-                    driver.execute_script("window.scrollBy(0, 500);")
-                    time.sleep(2)
-                    links = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/video/"]')[:2]
-                    
-            except TimeoutException:
-                print("Timeout waiting for videos", flush=True)
-                pass
-            
-            # Extract video info
-            for i, link in enumerate(links[:2]):
-                if time.time() - start_time > max_runtime:
-                    break
-                    
-                try:
-                    href = link.get_attribute("href")
-                    if not href or "/video/" not in href:
-                        continue
-                        
-                    title = ""
-                    thumb = ""
-                    
-                    # Try to get thumbnail/title
-                    try:
-                        img = link.find_element(By.TAG_NAME, "img")
-                        title = (img.get_attribute("alt") or 
-                               img.get_attribute("aria-label") or "")[:200]
-                        thumb = img.get_attribute("src") or ""
-                    except:
-                        # Fallback selectors
-                        try:
-                            title_elem = link.find_element(By.CSS_SELECTOR, "span, div[title]")
-                            title = title_elem.text[:200]
-                        except:
-                            pass
-                            
-                    videos.append({
-                        "title": title,
-                        "url": clean_url(href),
-                        "image_url": thumb
-                    })
-                    
-                except Exception as e:
-                    print(f"Error processing video {i}: {str(e)}", flush=True)
-                    continue
-            
-            print(f"Found {len(videos)} videos", flush=True)
-            break  # Success, exit retry loop
-            
-        except WebDriverException as e:
-            print(f"WebDriver error (attempt {attempt + 1}): {str(e)}", flush=True)
-        except Exception as e:
-            print(f"Error (attempt {attempt + 1}): {str(e)}", flush=True)
-        finally:
-            if driver:
-                try:
-                    driver.quit()
-                except:
-                    pass
+        url = "https://www.facebook.com/pannon.nagykanizsa"
+        driver.get(url)
+
+        time.sleep(5)
+
+        # Force scroll + image load
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(4)
+
+        driver.execute_script("""
+            window.scrollTo(0, 0);
+            setTimeout(() => {
+                document.querySelectorAll('img').forEach(img => {
+                    if (!img.src || !img.complete) img.scrollIntoView({behavior: 'instant'});
+                });
+            }, 1500);
+        """)
+        time.sleep(3)
+
+        posts = []
+        selectors = ['div[role="article"]', 'div[data-pagelet^="FeedUnit"]', '[data-testid="fbfeed_story"]']
         
-        time.sleep(2)  # Brief pause between retries
-    
-    # Ensure valid JSON output
-    print(json.dumps(videos, ensure_ascii=False, indent=2))
+        article = None
+        for selector in selectors:
+            articles = driver.find_elements(By.CSS_SELECTOR, selector)
+            if articles:
+                article = articles[0]
+                break
+
+        if article:
+            # TITLE
+            title = ""
+            text_selectors = [
+                'div[data-ad-preview="message"] span',
+                'div[dir="auto"] span',
+                'div.x1lliihq span'
+            ]
+            for sel in text_selectors:
+                try:
+                    elems = article.find_elements(By.CSS_SELECTOR, sel)
+                    if elems:
+                        title = elems[0].text.strip()
+                        if len(title) > 10:
+                            break
+                except:
+                    continue
+
+            if title:
+                # URL
+                links = article.find_elements(By.CSS_SELECTOR, 'a[href*="/posts/"], a[href*="/pfbid"]')
+                post_url = ""
+                if links:
+                    href = links[0].get_attribute("href")
+                    if href:
+                        post_url = urljoin("https://www.facebook.com", href).split("?")[0]
+
+                # IMAGE (3 methods)
+                image_url = ""
+                imgs = article.find_elements(By.CSS_SELECTOR, 
+                    'img[src*="scontent"], img[src*="fbcdn"], img[data-imgperflogname*="image"]'
+                )
+                for img in imgs:
+                    src = img.get_attribute("src")
+                    if src and ("scontent" in src or "fbcdn" in src) and "emoji" not in src.lower():
+                        image_url = src
+                        break
+
+                posts.append({
+                    "title": title[:500],
+                    "url": post_url,
+                    "image_url": image_url
+                })
+
+        driver.quit()
+
+        result = {
+            "latest_1": posts[0] if posts else {"title": "", "url": "", "image_url": ""},
+            "source_url": url,
+            "status": "success",
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+
+    except Exception as e:
+        result = {
+            "latest_1": {"title": "", "url": "", "image_url": ""},
+            "source_url": "https://www.facebook.com/pannon.nagykanizsa",
+            "status": "error",
+            "error": str(e),
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+
+    # ---------- ALWAYS PRINT JSON ----------
+    print(json.dumps(result, ensure_ascii=False))
     sys.stdout.flush()
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("[]", flush=True)
-    except Exception as e:
-        print("[]", flush=True)
-        print(f"Critical error: {str(e)}", file=sys.stderr, flush=True)
+    scrape_facebook_posts()
