@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-TikTok Scraper - Facebook Style (514MB Render.com SAFE)
-Selenium + LOW MEMORY like your working Facebook script
+TikTok Scraper - EXACT Facebook Copy (WORKS 514MB Render.com)
 """
 
 import sys
@@ -14,56 +13,61 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from selenium.common.exceptions import TimeoutException
 import os
 
 def scrape_tiktok_posts():
-    """TikTok scraper - EXACT Facebook memory pattern"""
+    """TikTok - EXACT Facebook pattern that WORKS"""
     try:
-        # EXACT Facebook Chrome Options (works on 514MB)
+        # ********** EXACT FACEBOOK OPTIONS **********
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--window-size=360,640")  # MOBILE = LESS MEMORY
-        chrome_options.add_argument("--disable-images")       # NO IMAGES = LESS RAM
+        chrome_options.add_argument("--window-size=1920,1080")  # ← FACEBOOK SIZE!
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option("useAutomationExtension", False)
         chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
-        # EXACT Facebook service detection
+        # EXACT Facebook service
         service = None
         if os.path.exists('/usr/bin/chromedriver'):
             service = Service('/usr/bin/chromedriver')
 
         driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-        driver.set_page_load_timeout(15)
 
+        # TikTok URL
         url = "https://www.tiktok.com/@pannonegyetem"
         driver.get(url)
-        time.sleep(4)  # Facebook-style wait
 
-        # EXACT Facebook scroll pattern
+        # EXACT Facebook timing
+        time.sleep(5)
+
+        # EXACT Facebook scroll
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(3)
+        time.sleep(4)
 
+        # EXACT Facebook image force-load
         driver.execute_script("""
-            window.scrollTo(0, 500);
+            window.scrollTo(0, 0);
             setTimeout(() => {
                 document.querySelectorAll('img').forEach(img => {
                     if (!img.src || !img.complete) img.scrollIntoView({behavior: 'instant'});
                 });
-            }, 1000);
+            }, 1500);
         """)
-        time.sleep(2)
+        time.sleep(3)
 
         posts = []
         
-        # YOUR TIKTOK SELECTORS - Facebook fallback style
-        selectors = ['a[href*="/video/"]', '[data-e2e="user-post-item"] a']
+        # ********** TIKTOK SELECTORS **********
+        selectors = [
+            'a[href*="/video/"]', 
+            '[data-e2e="user-post-item"] a',
+            'a[href*="/@pannonegyetem/video"]'
+        ]
         
         video_link = None
         for selector in selectors:
@@ -73,44 +77,43 @@ def scrape_tiktok_posts():
                 break
 
         if video_link:
-            # EXACT Facebook title extraction pattern
-            title_selectors = [
-                'img[alt]', 
-                'img[aria-label]',
-                'span'
-            ]
-            
-            title = ""
-            for sel in title_selectors:
-                try:
-                    elems = video_link.find_elements(By.CSS_SELECTOR, sel)
-                    if elems:
-                        title = elems[0].get_attribute("alt") or elems[0].get_attribute("aria-label") or elems[0].text
-                        title = title.strip()[:500]
-                        if len(title) > 5:
+            href = video_link.get_attribute("href")
+            if href and "/video/" in href:
+                # ********** EXACT Facebook title extraction **********
+                title_selectors = ['img[alt]', 'img[aria-label]', 'span']
+                title = ""
+                
+                for sel in title_selectors:
+                    try:
+                        elems = video_link.find_elements(By.CSS_SELECTOR, sel)
+                        if elems:
+                            title = (elems[0].get_attribute("alt") or 
+                                   elems[0].get_attribute("aria-label") or 
+                                   elems[0].text or "").strip()
+                            title = title[:500]
+                            if len(title) > 5:
+                                break
+                    except:
+                        continue
+
+                if title:
+                    # URL
+                    post_url = urljoin("https://www.tiktok.com", href).split("?")[0]
+
+                    # IMAGE (TikTok CDN)
+                    image_url = ""
+                    imgs = video_link.find_elements(By.TAG_NAME, "img")
+                    for img in imgs:
+                        src = img.get_attribute("src")
+                        if src and ("tiktokcdn" in src or "p16-sign" in src):
+                            image_url = src
                             break
-                except:
-                    continue
 
-            if title:
-                # URL (Facebook style)
-                href = video_link.get_attribute("href")
-                post_url = urljoin("https://www.tiktok.com", href).split("?")[0] if href else ""
-
-                # IMAGE (Facebook 3-method style)
-                image_url = ""
-                imgs = video_link.find_elements(By.CSS_SELECTOR, 'img')
-                for img in imgs:
-                    src = img.get_attribute("src")
-                    if src and "tiktokcdn" in src:
-                        image_url = src
-                        break
-
-                posts.append({
-                    "title": title,
-                    "url": post_url,
-                    "image_url": image_url
-                })
+                    posts.append({
+                        "title": title,
+                        "url": post_url,
+                        "image_url": image_url
+                    })
 
         driver.quit()
 
@@ -130,7 +133,6 @@ def scrape_tiktok_posts():
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
         }
 
-    # ---------- EXACT Facebook JSON output ----------
     print(json.dumps(result, ensure_ascii=False))
     sys.stdout.flush()
 
