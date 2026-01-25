@@ -25,26 +25,12 @@ def scrape_facebook_posts():
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-extensions")
-        chrome_options.add_argument("--disable-background-networking")
-        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
-        chrome_options.add_argument("--window-size=1280,720")
-
-        # NEW – memory savers
-        chrome_options.add_argument("--disable-features=TranslateUI,BackForwardCache,AcceptCHFrame,MediaRouter")
-        chrome_options.add_argument("--disable-component-update")
-        chrome_options.add_argument("--disable-sync")
-        chrome_options.add_argument("--disable-default-apps")
-        chrome_options.add_argument("--disable-hang-monitor")
-        chrome_options.add_argument("--disable-ipc-flooding-protection")
-        chrome_options.add_argument("--disable-renderer-backgrounding")
-        chrome_options.add_argument("--disable-background-timer-throttling")
-        chrome_options.add_argument("--disable-backgrounding-occluded-windows")
-
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--window-size=1920,1080")
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option("useAutomationExtension", False)
-        chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+        chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
         # Auto-detect chromedriver
         service = None
