@@ -24,7 +24,7 @@ class EszkozokController extends Controller
         $validated = $request->validate([
             'id' => 'required|string',
             'datetime' => 'required|date',
-            'fcm_token' => 'required|string',
+            'fcm_token' => 'nullable|string',
         ]);
 
         Napilogin::create([
