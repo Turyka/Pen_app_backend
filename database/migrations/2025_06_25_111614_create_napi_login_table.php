@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('napi_login', function (Blueprint $table) {
         $table->id();
         $table->string('device_id');
-        $table->timestamp('datetime');
+        $table->date('datetime');
         $table->string('fcm_token')->nullable();
         $table->timestamps();
         });
