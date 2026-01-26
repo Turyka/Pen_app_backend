@@ -97,18 +97,5 @@ class FacebookController extends Controller
 
 
 
-    public function refreshFacebookPosts()
-    {
-        Schema::dropIfExists('facebook_posts');
-
-        Schema::create('facebook_posts', function (Blueprint $table) {
-            $table->id();
-            $table->text('title');
-            $table->string('url');
-            $table->text('image_url')->nullable();
-            $table->timestamps();
-        });
-
-        return 'facebook_posts refreshed';
-    }
+    
 }

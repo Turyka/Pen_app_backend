@@ -5,8 +5,28 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Eszkozok;
 use App\Models\Napilogin;
+
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 class EszkozokController extends Controller
 {
+
+public function reset()
+    {
+        Schema::dropIfExists('napi_login');
+
+        Schema::create('napi_login', function (Blueprint $table) {
+        $table->id();
+        $table->string('device_id');
+        $table->date('datetime');
+        $table->string('fcm_token')->nullable();
+        $table->timestamps();
+        });
+
+        return 'facebook_posts refreshed';
+    }
+
+
     public function index()
     {
         $devices = Eszkozok::orderBy('created_at', 'desc')->get();
