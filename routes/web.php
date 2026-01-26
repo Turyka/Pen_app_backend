@@ -16,7 +16,7 @@ use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\TiktokController;
 use App\Http\Controllers\FacebookController;
 
-Route::get('/refresh-facebook-posts', [FacebookController::class, 'refreshFacebookPosts']);
+//Route::get('/refresh-facebook-posts', [FacebookController::class, 'refreshFacebookPosts']);
 
 Route::get('/scrape-tiktok', [TiktokController::class, 'store']);
 
@@ -34,6 +34,8 @@ Route::post('/login', [KezdoController::class, 'authenticate'])
     ->name('login_store')
     ->middleware('throttle:10,1'); 
 
+
+
 Route::post('/logout', function () {
     Auth::logout();
     return redirect('/');
@@ -46,7 +48,7 @@ Route::get('/database/restore-newest', [DatabaseController::class, 'restoreNewes
 
 
 //HIREK 
-Route::get('/hirek', [HirController::class, 'index']);
+//Route::get('/hirek', [HirController::class, 'index']);
 Route::get('/hirek/kap', [HirController::class, 'scrape']);
 Route::get('/hirek/torol', [HirController::class, 'torol']);
 Route::get('/seed', [HirController::class, 'seedDatabase']);

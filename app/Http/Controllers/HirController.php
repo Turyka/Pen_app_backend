@@ -63,11 +63,19 @@ class HirController extends Controller
 
     public function apiIndex(Request $request)
     {
-        $perPage = $request->get('per_page', 5);
+        if ($request->query('titkos') !== env('API_SECRET')) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+        }
 
-        $hirek = Hir::orderBy('id', 'desc')->paginate($perPage);
+        // Get the latest 10 news
+        $hirek = Hir::orderBy('id', 'desc')
+                    ->take(10)
+                    ->get();
 
-        return response()->json($hirek);
+        // Return only the data array
+        return response()->json([
+            'data' => $hirek
+        ]);
     }
 
     public function torol()

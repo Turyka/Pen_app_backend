@@ -28,7 +28,7 @@ use Illuminate\Http\Request;
 
     Route::get('/facebook-post', [FacebookController::class, 'facebookPostAPI']);
 
-    Route::get('/tiktok-post', [TiktokController::class, 'TiktokPostAPI']);
+    //Route::get('/tiktok-post', [TiktokController::class, 'TiktokPostAPI']);
 
     /*
     Route::middleware(['auth:sanctum'])->group(function () {
