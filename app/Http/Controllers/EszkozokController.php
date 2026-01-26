@@ -16,25 +16,29 @@ class EszkozokController extends Controller
     }
 
     public function napi(Request $request)
-    {
-        if ($request->query('titkos') !== env('API_SECRET')) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-
-        $validated = $request->validate([
-            'id' => 'required|string',
-            'datetime' => 'required|date',
-            'fcm_token' => 'nullable|string',
-        ]);
-
-        Napilogin::create([
-            'device_id' => $validated['id'],
-            'datetime' => $validated['datetime'],
-            'fcm_token' => $validated['fcm_token'],
-        ]);
-
-        return response()->json(['message' => 'Napi bejelentkezés sikeres']);
+{
+    if ($request->query('titkos') !== env('API_SECRET')) {
+        return response()->json(['error' => 'Unauthorized'], 401);
     }
+
+    $validated = $request->validate([
+        'id' => 'required|string',
+        'datetime' => 'required|date',
+        'fcm_token' => 'nullable|string',
+    ]);
+
+    Napilogin::updateOrCreate(
+        [
+            'device_id' => $validated['id'],
+            'datetime' => $validated['datetime']
+        ],
+        [
+            'fcm_token' => $validated['fcm_token'] ?? null
+        ]
+    );
+
+    return response()->json(['message' => 'Napi bejelentkezés sikeres']);
+}
 
     public function store(Request $request)
     {
