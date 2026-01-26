@@ -124,23 +124,27 @@ class KozlemenyController extends Controller
 
     // 🌐 Naptár API (JSON)
     public function KozlemenyAPI(Request $request)
-    {
-        if ($request->query('titkos') !== env('API_SECRET')) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-        
-        $events = Kozlemeny::all()->map(function ($event) {
-            return [
-            'title' => $event->title,
-            'description' => $event->description,
-            'ertesites' => $event->ertesites,
-            'type' => $event->type,
-            'created' => $event->created,
-            'updated_at'  => $event->updated_at ? $event->updated_at->format('Y-m-d H:i:s') : null,
-            ];
-        });
-
-        return response()->json($events);
+{
+    if ($request->query('titkos') !== env('API_SECRET')) {
+        return response()->json(['error' => 'Unauthorized'], 401);
     }
+    
+    // Get top 20 newest entries
+    $events = Kozlemeny::orderBy('created', 'desc') // newest first
+                        ->take(20)
+                        ->get()
+                        ->map(function ($event) {
+                            return [
+                                'title' => $event->title,
+                                'description' => $event->description,
+                                'ertesites' => $event->ertesites,
+                                'type' => $event->type,
+                                'created' => $event->created,
+                                'updated_at' => $event->updated_at ? $event->updated_at->format('Y-m-d H:i:s') : null,
+                            ];
+                        });
+
+    return response()->json($events);
+}
 
 }
