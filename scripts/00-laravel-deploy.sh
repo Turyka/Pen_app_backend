@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
-echo "Running composer"
+
+echo "Installing composer dependencies..."
 composer install --no-dev --working-dir=/var/www/html
 
-echo "Caching config..."
-php artisan config:cache
-
-echo "Caching routes..."
-php artisan route:cache
-
-php artisan route:clear
+echo "Clearing caches..."
 php artisan cache:clear
 php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+
+echo "Caching config and routes..."
+php artisan config:cache
+php artisan route:cache
+
+echo "Listing routes (for debugging)..."
+php artisan route:list
 
 echo "Running migrations..."
 php artisan migrate --force
