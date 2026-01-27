@@ -22,13 +22,18 @@ use Illuminate\Http\Request;
 
     Route::get('/kozlemenyAPI', [KozlemenyController::class, 'KozlemenyAPI']);
 
+    Route::post('/tiktok-keres', [TiktokController::class, 'store'])
+    ->middleware('tiktok.auth');
+
     Route::patch('/update/ertesites/{id}', [EszkozokController::class, 'update']);
     // eszkozok
     Route::post('/eszkozok', [EszkozokController::class, 'store']);
 
     Route::get('/facebook-post', [FacebookController::class, 'facebookPostAPI']);
 
-    //Route::get('/tiktok-post', [TiktokController::class, 'TiktokPostAPI']);
+    Route::get('/tiktok-post', [TiktokController::class, 'TiktokPostAPI']);
+
+
 
     /*
     Route::middleware(['auth:sanctum'])->group(function () {
