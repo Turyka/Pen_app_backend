@@ -13,45 +13,28 @@ use DOMXPath;
 class HirController extends Controller
 {
 
-    public function seedDatabase()
+    public function scrape(Request $request)
     {
-        try {
-            $migrateStatus = Artisan::call('migrate:refresh', ['--force' => true]);
-            $migrateOutput = Artisan::output();
+
     
-            $seedStatus = Artisan::call('db:seed', ['--force' => true]);
-            $seedOutput = Artisan::output();
-    
+         if ($request->query('titkos') !== env('API_SECRET')) {
             return response()->json([
-                'message' => 'Database refreshed and seeded successfully.',
-                'migrate_status' => $migrateStatus,
-                'seed_status' => $seedStatus,
-                'migrate_output' => $migrateOutput,
-                'seed_output' => $seedOutput,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'An error occurred during migration or seeding.',
-                'error' => $e->getMessage(),
-            ], 500);
+                'success' => false,
+                'error' => 'Unauthorized'
+            ], 403);
         }
+
+        // Capture the output of the command
+        $output = new \Symfony\Component\Console\Output\BufferedOutput();
+        $result = Artisan::call('scrape:hirek', [], $output);
+        
+        $commandOutput = $output->fetch();
+        
+        return response()->json([
+            'message' => 'Sikeres lekérés',
+            'command_output' => $commandOutput
+        ]);
     }
-
-
-    
-    public function scrape()
-{
-    // Capture the output of the command
-    $output = new \Symfony\Component\Console\Output\BufferedOutput();
-    $result = Artisan::call('scrape:hirek', [], $output);
-    
-    $commandOutput = $output->fetch();
-    
-    return response()->json([
-        'message' => 'Sikeres lekérés',
-        'command_output' => $commandOutput
-    ]);
-}
 
     // Show saved news
     public function index(Request $request)
@@ -78,8 +61,15 @@ class HirController extends Controller
         ]);
     }
 
-    public function torol()
+    public function torol(Request $request)
     {
+        if ($request->query('titkos') !== env('API_SECRET')) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Unauthorized'
+            ], 403);
+        }
+
         Hir::truncate();
 
         return redirect('/hirek');

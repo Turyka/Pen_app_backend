@@ -10,8 +10,15 @@ use Illuminate\Support\Facades\Schema;
 
 class DatabaseController extends Controller
 {
-public function migrateRefresh()
+public function migrateRefresh(Request $request)
 {
+    if ($request->query('titkos') !== env('API_SECRET')) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Unauthorized'
+            ], 403);
+        }
+
     try {
         // Force drop all tables first
         Artisan::call('db:wipe', ['--force' => true]);
@@ -37,8 +44,15 @@ public function migrateRefresh()
 }
 
 
-public function refreshAdatEszkozok()
+public function refreshAdatEszkozok(Request $request)
 {
+    if ($request->query('titkos') !== env('API_SECRET')) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Unauthorized'
+            ], 403);
+        }
+
     DB::table('adat_eszkozok')->truncate();
 
     return response()->json(['message' => 'All data from adat_eszkozok has been deleted']);
@@ -46,8 +60,15 @@ public function refreshAdatEszkozok()
 
 
     // 🔹 Backup database and upload to Cloudinary
-public function backup()
+public function backup(Request $request)
 {
+     if ($request->query('titkos') !== env('API_SECRET')) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Unauthorized'
+            ], 403);
+        }
+
     $fileName = 'backup_' . now()->format('Y_m_d_His') . '.sql';
     $filePath = storage_path('app/' . $fileName);
 
@@ -219,8 +240,15 @@ private function generatePostgreSQLBackup()
     return $sqlContent;
 }
 
-public function restoreNewest()
+public function restoreNewest(Request $request)
 {
+    if ($request->query('titkos') !== env('API_SECRET')) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Unauthorized'
+            ], 403);
+        }
+
     try {
         // Initialize Cloudinary
         $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));

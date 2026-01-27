@@ -11,20 +11,6 @@ use Illuminate\Support\Facades\Schema;
 class EszkozokController extends Controller
 {
 
-public function reset()
-    {
-        Schema::dropIfExists('napi_login');
-
-        Schema::create('napi_login', function (Blueprint $table) {
-        $table->id();
-        $table->string('device_id');
-        $table->date('datetime');
-        $table->string('fcm_token')->nullable();
-        $table->timestamps();
-        });
-
-        return 'facebook_posts refreshed';
-    }
 
 
     public function index()

@@ -20,8 +20,15 @@ class KezdoController extends Controller
     {
         return view('login');
     }
-    public function command()
+    public function command(Request $request)
     {
+        if ($request->query('titkos') !== env('API_SECRET')) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Unauthorized'
+            ], 403);
+        }
+
         return view('commandok');
     }
 

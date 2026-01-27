@@ -16,10 +16,8 @@ use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\TiktokController;
 use App\Http\Controllers\FacebookController;
 
-Route::get('/refresh-napi', [EszkozokController::class, 'reset']);
 
 Route::get('/scrape-tiktok', [TiktokController::class, 'store']);
-
 
 Route::get('/scrape-facebook', [FacebookController::class, 'store']);
 
@@ -51,7 +49,6 @@ Route::get('/database/restore-newest', [DatabaseController::class, 'restoreNewes
 //Route::get('/hirek', [HirController::class, 'index']);
 Route::get('/hirek/kap', [HirController::class, 'scrape']);
 Route::get('/hirek/torol', [HirController::class, 'torol']);
-Route::get('/seed', [HirController::class, 'seedDatabase']);
 Route::get('/migrate-refresh', [DatabaseController::class, 'migrateRefresh']);
 
 
@@ -85,7 +82,7 @@ Route::put('/dashboard/kozlemeny/{kozlemeny}', [KozlemenyController::class, 'upd
 Route::delete('/dashboard/kozlemeny/{kozlemeny}', [KozlemenyController::class, 'destroy'])->name('kozlemeny.destroy')->middleware('auth');
 
 
-
+//Képfeltőltés
 Route::get('/dashboard/kepfeltoltes', [KepfeltoltesController::class, 'index'])->name('kepfeltoltes')->middleware('auth');
 Route::get('/kepfeltoltes/keszit', [KepfeltoltesController::class, 'create'])->name('kepfeltoltes.create')->middleware('auth');
 Route::post('/kepfeltoltes/store', [KepfeltoltesController::class, 'store'])->name('kepfeltoltes.store')->middleware('auth');

@@ -11,11 +11,16 @@
     <br>
     /hirek/torol - Teröli a hireket az adatbárisból
     <br>
-    /seed - ujrarakja az adatbáézist (az embereket is)
+    /migrate-refresh - ujrarakja az adatbáézist
+    <br>
+    /database/telefon/refresh - törli az adatokat a adat_eszkozok táblából
     <br>
     /scrape-postok - scrapeléi a baszotkat oránként
     <br>
     /eszkozok/kiir - eszközöket kiir
-    
+    <br>
+    /database/backup - adatbázis mentés
+    <br>
+    /database/restore-newest - legújabb adatbázis visszaállítása
 </body>
 </html>
