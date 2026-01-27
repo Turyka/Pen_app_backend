@@ -7,70 +7,118 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\FacebookPost;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Database\Schema\Blueprint;
+use Cloudinary\Cloudinary;
+use Illuminate\Support\Facades\Http;
+
 
 class FacebookController extends Controller
 {
 
     public function store(Request $request)
     {
-           if ($request->query('titkos') !== env('API_SECRET')) {
-        return response()->json([
-            'success' => false,
-            'error' => 'Unauthorized'
-        ], 403);
-    }
+        // 🔐 API SECRET CHECK
+        if ($request->query('titkos') !== env('API_SECRET')) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Unauthorized'
+            ], 403);
+        }
 
-    $pythonPath = public_path('scrape_facebook.py');
+        // 🐍 RUN PYTHON SCRAPER
+        $pythonPath = public_path('scrape_facebook.py');
+        $cmd = sprintf('cd %s && python3 %s 2>&1', public_path(), basename($pythonPath));
+        $output = shell_exec($cmd);
 
-    $cmd = sprintf('cd %s && python3 %s 2>&1', public_path(), basename($pythonPath));
-    $output = shell_exec($cmd);
+        Log::info('Facebook scrape command', [
+            'cmd' => $cmd,
+            'output_length' => strlen($output ?? '')
+        ]);
 
-    Log::info('Facebook scrape command', [
-        'cmd' => $cmd,
-        'output_length' => strlen($output ?? '')
-    ]);
+        // 📦 PARSE JSON
+        $data = json_decode($output ?? '{}', true);
 
-    $data = json_decode($output ?? '{}', true);
+        if (!$data || ($data['status'] ?? '') === 'error') {
+            return response()->json([
+                'success' => false,
+                'error' => $data['error'] ?? 'No data returned',
+                'raw_output' => $output,
+            ], 500);
+        }
 
-    if (!$data || $data['status'] === 'error') {
-        return response()->json([
-            'success' => false,
-            'error' => $data['error'] ?? 'No data',
-            'raw_output' => $output,
-        ], 500);
-    }
+        $post = $data['latest_1'];
 
-    $post = $data['latest_1'];
+        // ❌ EMPTY TITLE SAFETY
+        if (empty($post['title'])) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Empty post title',
+            ], 422);
+        }
 
-    // ❌ Skip if same title already exists
-    $exists = DB::table('facebook_posts')
-        ->where('title', $post['title'])
-        ->exists();
+        // ❌ SKIP IF TITLE ALREADY EXISTS
+        $exists = DB::table('facebook_posts')
+            ->where('title', $post['title'])
+            ->exists();
 
-    if ($exists) {
+        if ($exists) {
+            return response()->json([
+                'success' => true,
+                'saved' => false,
+                'skipped' => true,
+                'reason' => 'Same title already exists'
+            ]);
+        }
+
+        // ☁️ CLOUDINARY IMAGE UPLOAD
+        $cloudinaryImageUrl = '';
+
+        if (!empty($post['image_url'])) {
+            try {
+                // Download image from Facebook
+                $imageResponse = Http::timeout(15)->get($post['image_url']);
+
+                if ($imageResponse->successful()) {
+                    $tempPath = storage_path('app/temp_fb_image.jpg');
+                    file_put_contents($tempPath, $imageResponse->body());
+
+                    // Upload to Cloudinary
+                    $cloudinary = new Cloudinary();
+                    $upload = $cloudinary->uploadApi()->upload($tempPath, [
+                        'folder' => 'facebook_posts',
+                        'quality' => 'auto',
+                        'fetch_format' => 'auto',
+                        'resource_type' => 'image',
+                    ]);
+
+                    $cloudinaryImageUrl = $upload['secure_url'] ?? '';
+
+                    // Cleanup temp file
+                    @unlink($tempPath);
+                }
+            } catch (\Throwable $e) {
+                Log::error('Cloudinary upload failed', [
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        // 💾 SAVE TO DATABASE
+        DB::table('facebook_posts')->insert([
+            'title' => $post['title'],
+            'url' => $post['url'],
+            'image_url' => $cloudinaryImageUrl,
+            'updated_at' => now(),
+        ]);
+
         return response()->json([
             'success' => true,
-            'saved' => false,
-            'skipped' => true,
-            'reason' => 'Same title already exists'
+            'saved' => true,
+            'post' => [
+                'title' => $post['title'],
+                'url' => $post['url'],
+                'image_url' => $cloudinaryImageUrl,
+            ]
         ]);
-    }
-
-    // ✅ Save only if new
-    DB::table('facebook_posts')->insert([
-        'title' => $post['title'],
-        'url' => $post['url'],
-        'image_url' => $post['image_url'],
-        'updated_at' => now()
-    ]);
-
-    return response()->json([
-        'success' => true,
-        'saved' => true,
-        'post' => $post
-    ]);
     }
 
 

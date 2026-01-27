@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Cloudinary\Cloudinary;
 
 class TiktokController extends Controller
 {
@@ -103,36 +104,5 @@ class TiktokController extends Controller
         }
     }
     
-    public function show()
-    {
-        $videos = DB::table('tiktok_posts')
-                   ->orderBy('created_at', 'desc')
-                   ->limit(20)
-                   ->get();
-        
-        return response()->json([
-            'success' => true,
-            'count' => count($videos),
-            'videos' => $videos
-        ]);
-    }
-    
-    public function latest()
-    {
-        $video = DB::table('tiktok_posts')
-                  ->orderBy('created_at', 'desc')
-                  ->first();
-        
-        if (!$video) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No videos in database'
-            ]);
-        }
-        
-        return response()->json([
-            'success' => true,
-            'latest' => $video
-        ]);
-    }
+   
 }
