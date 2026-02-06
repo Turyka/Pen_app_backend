@@ -154,9 +154,14 @@ public function facebookPostAPI(Request $request)
         ], 401);
     }
 
-    return response()->json(
-        FacebookPost::latest()->take(5)->get()
-    );
+    return FacebookPost::orderByDesc('updated_at')
+    ->take(5)
+    ->get(['title', 'url', 'image_url'])
+    ->map(fn($p) => [
+        'title' => Str::words($p->title, 10, '...'),
+        'url' => $p->url,
+        'image_url' => $p->image_url,
+    ]);
 }
 
 
