@@ -122,31 +122,43 @@ class FacebookController extends Controller
     }
 
 
-    public function facebookPostAPI(Request $request)
+public function facebookPostAPI(Request $request)
 {
-    $authHeader = $request->header('Authorization');
+    $auth = $request->header('Authorization');
+    $timestamp = $request->header('X-Timestamp');
+    $signature = $request->header('X-Signature');
 
-    if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
-        return response()->json(['error' => 'Unauthorized'], 401);
+    if (!$auth || !$timestamp || !$signature) {
+        return response()->json(['error' => 'Missing headers'], 401);
     }
 
-    $token = substr($authHeader, 7);
-
-    if (!hash_equals(env('API_TOKEN'), $token)) {
-        return response()->json(['error' => 'Unauthorized'], 401);
+    if (!str_starts_with($auth, 'Bearer ')) {
+        return response()->json(['error' => 'Bad auth format'], 401);
     }
 
-    $events = FacebookPost::orderBy('updated_at', 'desc')
-        ->take(5)
-        ->get()
-        ->map(fn ($event) => [
-            'title' => Str::words($event->title, 10, '...'),
-            'url' => $event->url,
-            'image_url' => $event->image_url,
-        ]);
+    if (!hash_equals(env('API_TOKEN'), substr($auth, 7))) {
+        return response()->json(['error' => 'Bad token'], 401);
+    }
 
-    return response()->json($events);
+    if (abs(time() - (int)$timestamp) > 300) {
+        return response()->json(['error' => 'Expired'], 401);
+    }
+
+    $expected = hash_hmac('sha256', $timestamp, env('API_TOKEN'));
+
+    if (!hash_equals($expected, $signature)) {
+        return response()->json([
+            'error' => 'Bad signature',
+            'expected' => $expected, // TEMP
+            'received' => $signature // TEMP
+        ], 401);
+    }
+
+    return response()->json(
+        FacebookPost::latest()->take(5)->get()
+    );
 }
+
 
 
 
