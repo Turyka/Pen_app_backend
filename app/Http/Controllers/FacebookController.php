@@ -123,24 +123,30 @@ class FacebookController extends Controller
 
 
     public function facebookPostAPI(Request $request)
-    {
-    if ($request->query('titkos') !== env('API_SECRET')) {
+{
+    $authHeader = $request->header('Authorization');
+
+    if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+
+    $token = substr($authHeader, 7);
+
+    if (!hash_equals(env('API_TOKEN'), $token)) {
         return response()->json(['error' => 'Unauthorized'], 401);
     }
 
     $events = FacebookPost::orderBy('updated_at', 'desc')
         ->take(5)
         ->get()
-        ->map(function ($event) {
-            return [
-                'title' => Str::words($event->title, 10, '...'),
-                'url' => $event->url,
-                'image_url' => $event->image_url,
-            ];
-        });
+        ->map(fn ($event) => [
+            'title' => Str::words($event->title, 10, '...'),
+            'url' => $event->url,
+            'image_url' => $event->image_url,
+        ]);
 
     return response()->json($events);
-    }   
+}
 
 
 
