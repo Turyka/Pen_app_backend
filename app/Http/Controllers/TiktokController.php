@@ -67,7 +67,7 @@ class TiktokController extends Controller
         return response()->json(['error' => 'Unauthorized'], 401);
     }
 
-    $events = TiktokPost::orderBy('id', 'desc')
+    $events = TiktokPost::orderBy('updated_at', 'desc')
         ->take(5)
         ->get()
         ->map(function ($event) {

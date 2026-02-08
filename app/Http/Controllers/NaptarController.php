@@ -164,14 +164,44 @@ class NaptarController extends Controller
     }
 
     // 🌐 Naptár API (JSON)
-    public function naptarAPI(Request $request)
+public function naptarAPI(Request $request)
 {
-    if ($request->query('titkos') !== env('API_SECRET')) {
-        return response()->json(['error' => 'Unauthorized'], 401);
+    $auth = $request->header('Authorization');
+    $timestamp = $request->header('X-Timestamp');
+    $signature = $request->header('X-Signature');
+
+    // 1️⃣ Check headers
+    if (!$auth || !$timestamp || !$signature) {
+        return response()->json(['error' => 'Missing headers'], 401);
     }
 
+    // 2️⃣ Validate Bearer token format
+    if (!str_starts_with($auth, 'Bearer ')) {
+        return response()->json(['error' => 'Bad auth format'], 401);
+    }
+
+    // 3️⃣ Check token
+    if (!hash_equals(env('API_TOKEN'), substr($auth, 7))) {
+        return response()->json(['error' => 'Bad token'], 401);
+    }
+
+    // 4️⃣ Timestamp freshness (5 min window)
+    if (abs(time() - (int)$timestamp) > 300) {
+        return response()->json(['error' => 'Expired'], 401);
+    }
+
+    // 5️⃣ Verify HMAC signature
+    $expected = hash_hmac('sha256', $timestamp, env('API_TOKEN'));
+    if (!hash_equals($expected, $signature)) {
+        return response()->json([
+            'error' => 'Bad signature',
+            'expected' => $expected,
+            'received' => $signature
+        ], 401);
+    }
+
+    // 6️⃣ Fetch events
     $events = Naptar::all()->map(function ($event) {
-        // Try to find a matching image in kepfeltoltes table
         $kep = \App\Models\Kepfeltoltes::where('event_type', $event->event_type)->first();
 
         return [
@@ -180,8 +210,8 @@ class NaptarController extends Controller
             'date' => $event->date,
             'start_time' => substr($event->start_time, 0, 5),
             'end_time' => substr($event->end_time, 0, 5),
-            'event_type' => $event->event_type, // keep the name
-            'event_type_img' => $kep ? asset($kep->event_type_img) : null, // ✅ from DB
+            'event_type' => $event->event_type,
+            'event_type_img' => $kep ? asset($kep->event_type_img) : null,
             'description' => $event->description,
             'status' => $event->status,
             'link' => $event->link,

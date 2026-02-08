@@ -122,25 +122,48 @@ class FacebookController extends Controller
     }
 
 
-    public function facebookPostAPI(Request $request)
-    {
-    if ($request->query('titkos') !== env('API_SECRET')) {
-        return response()->json(['error' => 'Unauthorized'], 401);
+public function facebookPostAPI(Request $request)
+{
+    $auth = $request->header('Authorization');
+    $timestamp = $request->header('X-Timestamp');
+    $signature = $request->header('X-Signature');
+
+    if (!$auth || !$timestamp || !$signature) {
+        return response()->json(['error' => 'Missing headers'], 401);
     }
 
-    $events = FacebookPost::orderBy('updated_at', 'desc')
-        ->take(5)
-        ->get()
-        ->map(function ($event) {
-            return [
-                'title' => Str::words($event->title, 10, '...'),
-                'url' => $event->url,
-                'image_url' => $event->image_url,
-            ];
-        });
+    if (!str_starts_with($auth, 'Bearer ')) {
+        return response()->json(['error' => 'Bad auth format'], 401);
+    }
 
-    return response()->json($events);
-    }   
+    if (!hash_equals(env('API_TOKEN'), substr($auth, 7))) {
+        return response()->json(['error' => 'Bad token'], 401);
+    }
+
+    if (abs(time() - (int)$timestamp) > 300) {
+        return response()->json(['error' => 'Expired'], 401);
+    }
+
+    $expected = hash_hmac('sha256', $timestamp, env('API_TOKEN'));
+
+    if (!hash_equals($expected, $signature)) {
+        return response()->json([
+            'error' => 'Bad signature',
+            'expected' => $expected, // TEMP
+            'received' => $signature // TEMP
+        ], 401);
+    }
+
+    return FacebookPost::orderByDesc('updated_at')
+    ->take(5)
+    ->get(['title', 'url', 'image_url'])
+    ->map(fn($p) => [
+        'title' => Str::words($p->title, 10, '...'),
+        'url' => $p->url,
+        'image_url' => $p->image_url,
+    ]);
+}
+
 
 
 
