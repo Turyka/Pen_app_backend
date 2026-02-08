@@ -2,12 +2,13 @@ const deviceChartData = window.deviceChartData || [];
 
 
 const brandColorMap = {
-  Samsung: '#0694a2',
+  samsung: '#0694a2',
   iPhone: '#7e3af2',
-  Redmi: '#1c64f2',
-  Huawei: '#10b981',
+  redmi: '#1c64f2',
+  huawei: '#10b981',
   OnePlus: '#f59e0b',
-  Nokia: '#f43f5e',
+  HONOR: '#f43f5e',
+  google: '#9e17c0',
   Other: '#6366f1', // fallback color
 };
 
