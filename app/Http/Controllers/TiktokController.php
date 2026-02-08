@@ -62,23 +62,53 @@ class TiktokController extends Controller
     
 
     public function TiktokPostAPI(Request $request)
-    {
-    if ($request->query('titkos') !== env('API_SECRET')) {
-        return response()->json(['error' => 'Unauthorized'], 401);
+{
+    $auth = $request->header('Authorization');
+    $timestamp = $request->header('X-Timestamp');
+    $signature = $request->header('X-Signature');
+
+    // 1️⃣ Check all headers exist
+    if (!$auth || !$timestamp || !$signature) {
+        return response()->json(['error' => 'Missing headers'], 401);
     }
 
-    $events = TiktokPost::orderBy('id', 'desc')
+    // 2️⃣ Validate Authorization format
+    if (!str_starts_with($auth, 'Bearer ')) {
+        return response()->json(['error' => 'Bad auth format'], 401);
+    }
+
+    // 3️⃣ Validate token
+    if (!hash_equals(env('API_TOKEN'), substr($auth, 7))) {
+        return response()->json(['error' => 'Bad token'], 401);
+    }
+
+    // 4️⃣ Check timestamp freshness (30s window)
+    if (abs(time() - (int)$timestamp) > 300) {
+        return response()->json(['error' => 'Expired'], 401);
+    }
+
+    // 5️⃣ Verify HMAC signature
+    $expected = hash_hmac('sha256', $timestamp, env('API_TOKEN'));
+
+    if (!hash_equals($expected, $signature)) {
+        return response()->json([
+            'error' => 'Bad signature',
+            'expected' => $expected, // TEMP for debugging
+            'received' => $signature // TEMP for debugging
+        ], 401);
+    }
+
+    // 6️⃣ Fetch latest 5 TikTok posts with only needed fields
+    $events = TiktokPost::orderByDesc('id')
         ->take(5)
-        ->get()
-        ->map(function ($event) {
-            return [
-                'title' => Str::words($event->title, 6, '...'),
-                'url' => $event->url,
-                'image_url' => $event->image_url,
-            ];
-        });
+        ->get(['title', 'url', 'image_url'])
+        ->map(fn($p) => [
+            'title' => Str::words($p->title, 6, '...'), // 6 words for TikTok
+            'url' => $p->url,
+            'image_url' => $p->image_url,
+        ]);
 
     return response()->json($events);
-    }   
+}
    
 }
