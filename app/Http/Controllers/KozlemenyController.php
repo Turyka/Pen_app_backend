@@ -136,14 +136,14 @@ class KozlemenyController extends Controller
 
     $token = str_replace('Bearer ', '', $authHeader);
 
-    if ($token !== env('API_SECRET')) {
+    if ($token !== env('API_TOKEN')) {
         return response()->json(['error' => 'Bad token'], 401);
     }
 
     $expectedSignature = hash_hmac(
         'sha256',
         $timestamp,
-        env('API_SECRET')
+        env('API_TOKEN')
     );
 
     if (!hash_equals($expectedSignature, $signature)) {
