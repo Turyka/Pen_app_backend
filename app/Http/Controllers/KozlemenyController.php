@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
@@ -123,26 +123,54 @@ class KozlemenyController extends Controller
     }
 
     // 🌐 Naptár API (JSON)
-    public function KozlemenyAPI(Request $request)
+  public function KozlemenyAPI(Request $request)
 {
-    if ($request->query('titkos') !== env('API_SECRET')) {
-        return response()->json(['error' => 'Unauthorized'], 401);
+    // 🔐 Header-based auth
+    $authHeader = $request->header('Authorization');
+    $timestamp  = $request->header('X-Timestamp');
+    $signature  = $request->header('X-Signature');
+
+    if (!$authHeader || !$timestamp || !$signature) {
+        return response()->json(['error' => 'Missing headers'], 401);
     }
-    
-    // Get top 20 newest entries
-    $events = Kozlemeny::orderBy('created', 'desc') // newest first
-                        ->take(20)
-                        ->get()
-                        ->map(function ($event) {
-                            return [
-                                'title' => $event->title,
-                                'description' => $event->description,
-                                'ertesites' => $event->ertesites,
-                                'type' => $event->type,
-                                'created' => $event->created,
-                                'updated_at' => $event->updated_at ? $event->updated_at->format('Y-m-d H:i:s') : null,
-                            ];
-                        });
+
+    $token = str_replace('Bearer ', '', $authHeader);
+
+    if ($token !== env('API_SECRET')) {
+        return response()->json(['error' => 'Bad token'], 401);
+    }
+
+    $expectedSignature = hash_hmac(
+        'sha256',
+        $timestamp,
+        env('API_SECRET')
+    );
+
+    if (!hash_equals($expectedSignature, $signature)) {
+        return response()->json(['error' => 'Bad signature'], 401);
+    }
+
+    // ⏱️ Optional replay protection (±5 minutes)
+    if (abs(time() - (int)$timestamp) > 300) {
+        return response()->json(['error' => 'Expired request'], 401);
+    }
+
+    // ✅ Business logic (unchanged)
+    $events = Kozlemeny::orderBy('created', 'desc')
+        ->take(20)
+        ->get()
+        ->map(function ($event) {
+            return [
+                'title'       => $event->title,
+                'description' => $event->description,
+                'ertesites'   => $event->ertesites,
+                'type'        => $event->type,
+                'created'     => $event->created,
+                'updated_at'  => $event->updated_at
+                    ? $event->updated_at->format('Y-m-d H:i:s')
+                    : null,
+            ];
+        });
 
     return response()->json($events);
 }
