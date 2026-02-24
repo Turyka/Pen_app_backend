@@ -76,8 +76,23 @@
                             @method('DELETE')
                             <button type="submit" class="text-red-600 hover:underline"
                               @if(Auth::user()->titulus === 'Elnök' && $user->titulus === 'Admin') disabled title="Admin nem törölhető" @endif>
-                              🗑️
+                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+         viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M6 7h12M9 7V4h6v3m-7 4v6m4-6v6m5-10H4l1 14h14l1-14z"/>
+    </svg>
                             </button>
+                          </form>
+                          <form action="{{ route('users.edit', $user) }}" method="GET">
+                            @csrf
+                            <button type="submit" class="text-blue-600 hover:underline">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+         viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M11 5h2M12 20h9M16.5 3.5l4 4L7 21H3v-4L16.5 3.5z"/>
+    </svg>
+                            </button>
+                          </form>
                           </form>
                         </div>
                       </td>

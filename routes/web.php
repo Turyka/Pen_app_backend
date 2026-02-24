@@ -92,13 +92,15 @@ Route::put('/dashboard/kepfeltoltes/{kepfeltoltes}', [KepfeltoltesController::cl
 
 
 // User müveletek
-Route::middleware(['auth', 'role:Admin,Elnök'])->group(function () {
+Route::middleware(['auth', 'role:Admin,Elnök,Elnökhelyettes'])->group(function () {
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    Route::get('/users/szerkeztes/{user}', [UserController::class, 'edit'])->name('users.edit');
+    Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
 });
-
+ 
 
 Route::get('/eszkozok/kiir', [EszkozokController::class, 'index'])->middleware('auth');
 
