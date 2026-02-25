@@ -247,220 +247,164 @@ public function restoreNewest()
         // Handle UTF-8 encoding properly
         $fileContent = mb_convert_encoding($fileContent, 'UTF-8', 'UTF-8');
         
-        // Replace backticks with double quotes
-        $fileContent = str_replace("`", "\"", $fileContent);
-        
-        // Fix the specific issues
-        $fileContent = preg_replace_callback(
-            '/INSERT INTO[^;]+;/',
-            function($match) {
-                $statement = $match[0];
-                
-                // Fix the statement
-                $statement = preg_replace_callback(
-                    '/INSERT INTO "(\w+)"\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/',
-                    function($tableMatch) {
-                        $tableName = $tableMatch[1];
-                        $columns = array_map('trim', explode(',', $tableMatch[2]));
-                        $values = array_map('trim', explode(',', $tableMatch[3]));
-                        
-                        // Remove quotes from column names
-                        $columns = array_map(function($col) {
-                            return trim($col, '"');
-                        }, $columns);
-                        
-                        $newColumns = [];
-                        $newValues = [];
-                        
-                        // Process each column-value pair
-                        foreach ($columns as $index => $column) {
-                            $value = $values[$index] ?? 'NULL';
-                            
-                            // Handle ID columns - skip them to let PostgreSQL auto-generate
-                            if ($column === 'id') {
-                                continue; // Skip ID column entirely
-                            }
-                            
-                            // Handle boolean columns
-                            if (in_array($column, ['ertesites', 'kozlemenyErtesites', 'naptarErtesites', 'type'])) {
-                                if ($value === "''" || $value === 'NULL' || $value === 'false' || $value === '0') {
-                                    $value = 'false';
-                                } elseif ($value === "'1'" || $value === '1' || $value === 'true') {
-                                    $value = 'true';
-                                }
-                            }
-                            
-                            // Handle integer columns that might have been converted to boolean
-                            if ($column === 'user_id' || $column === 'batch') {
-                                if ($value === 'true') {
-                                    $value = '1';
-                                } elseif ($value === 'false') {
-                                    $value = 'NULL';
-                                }
-                            }
-                            
-                            // Fix apostrophe escaping in string values
-                            if (preg_match('/^\'(.+)\'$/s', $value, $matches)) {
-                                $content = $matches[1];
-                                $content = str_replace("\\'", "''", $content);
-                                $content = str_replace('\\"', '"', $content);
-                                $content = str_replace("\\r\\n", "\r\n", $content);
-                                $content = str_replace("\\n", "\n", $content);
-                                $content = str_replace("\\r", "\r", $content);
-                                $content = str_replace("\\t", "\t", $content);
-                                $content = str_replace("\\\\", "\\", $content);
-                                $value = "'" . $content . "'";
-                            }
-                            
-                            $newColumns[] = '"' . $column . '"';
-                            $newValues[] = $value;
-                        }
-                        
-                        return 'INSERT INTO "' . $tableName . '" (' . implode(', ', $newColumns) . ') VALUES (' . implode(', ', $newValues) . ')';
-                    },
-                    $statement
-                );
-                
-                return $statement;
-            },
-            $fileContent
-        );
-        
-        // Extract all INSERT statements
+        // Remove the DROP TABLE and CREATE TABLE statements, keep only INSERTs
+        $lines = explode("\n", $fileContent);
         $inserts = [];
-        preg_match_all('/INSERT INTO[^;]+;/', $fileContent, $inserts);
+        $currentInsert = '';
+        
+        foreach ($lines as $line) {
+            $line = trim($line);
+            
+            // Skip empty lines, DROP TABLE, CREATE TABLE, and comment lines
+            if (empty($line) || 
+                strpos($line, 'DROP TABLE') === 0 || 
+                strpos($line, 'CREATE TABLE') === 0 ||
+                strpos($line, '--') === 0) {
+                continue;
+            }
+            
+            $currentInsert .= $line;
+            
+            // If line ends with semicolon, it's a complete statement
+            if (substr($line, -1) === ';') {
+                if (strpos($currentInsert, 'INSERT INTO') === 0) {
+                    $inserts[] = $currentInsert;
+                }
+                $currentInsert = '';
+            }
+        }
+        
+        // If there's a remaining insert
+        if (!empty($currentInsert) && strpos($currentInsert, 'INSERT INTO') === 0) {
+            $inserts[] = $currentInsert;
+        }
         
         $successful = 0;
         $errors = [];
         $skippedTables = ['migrations']; // Skip migrations table to avoid conflicts
         
-        // First, reset sequences for all tables
-        $tables = DB::select("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
-        foreach ($tables as $table) {
-            $tableName = $table->tablename;
-            try {
-                // Get the max ID for each table
-                if (Schema::hasColumn($tableName, 'id')) {
-                    $maxId = DB::table($tableName)->max('id') ?? 0;
-                    // Reset the sequence
-                    DB::statement("ALTER SEQUENCE {$tableName}_id_seq RESTART WITH " . ($maxId + 1));
-                }
-            } catch (\Exception $e) {
-                // Table might not have an ID column or sequence
-            }
-        }
+        // Disable foreign key checks temporarily
+        DB::statement('SET session_replication_role = replica;');
         
-        foreach ($inserts[0] as $insert) {
+        foreach ($inserts as $insert) {
             // Skip migrations table
             if (preg_match('/INSERT INTO "migrations"/', $insert)) {
                 continue;
             }
             
-            try {
-                DB::statement($insert);
-                $successful++;
-            } catch (\Exception $e) {
-                $errorMessage = $e->getMessage();
+            // Parse the INSERT statement
+            if (preg_match('/INSERT INTO "(\w+)"\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/', $insert, $matches)) {
+                $tableName = $matches[1];
+                $columns = array_map(function($col) {
+                    return trim($col, '" ');
+                }, explode(',', $matches[2]));
                 
-                // Handle unique violation errors
-                if (str_contains($errorMessage, 'duplicate key value violates unique constraint')) {
-                    // Try to update instead of insert
-                    if (preg_match('/INSERT INTO "(\w+)".*VALUES\s*\(([^)]+)\)/', $insert, $matches)) {
-                        $tableName = $matches[1];
-                        $values = array_map('trim', explode(',', $matches[2]));
-                        
-                        // Try to extract column names
-                        if (preg_match('/\(([^)]+)\)\s*VALUES/', $insert, $colMatches)) {
-                            $columns = array_map(function($col) {
-                                return trim(trim($col), '"');
-                            }, explode(',', $colMatches[1]));
-                            
-                            // Find the ID value
-                            $idIndex = array_search('id', $columns);
-                            if ($idIndex !== false && isset($values[$idIndex])) {
-                                $id = trim($values[$idIndex], "'");
-                                
-                                // Build UPDATE statement
-                                $setParts = [];
-                                foreach ($columns as $idx => $col) {
-                                    if ($col !== 'id' && isset($values[$idx])) {
-                                        $setParts[] = '"' . $col . '" = ' . $values[$idx];
-                                    }
-                                }
-                                
-                                if (!empty($setParts)) {
-                                    $updateSql = 'UPDATE "' . $tableName . '" SET ' . implode(', ', $setParts) . ' WHERE "id" = ' . $id;
-                                    try {
-                                        DB::statement($updateSql);
-                                        $successful++;
-                                        continue;
-                                    } catch (\Exception $e2) {
-                                        // Update failed, try insert with new ID
-                                    }
-                                }
-                            }
+                $values = explode(',', $matches[3]);
+                
+                // Process each value
+                $processedValues = [];
+                foreach ($values as $index => $value) {
+                    $value = trim($value);
+                    $columnName = $columns[$index] ?? '';
+                    
+                    // Handle boolean columns
+                    if (in_array($columnName, ['ertesites', 'kozlemenyErtesites', 'naptarErtesites'])) {
+                        if ($value === "''" || $value === 'NULL' || $value === '0') {
+                            $value = 'false';
+                        } elseif ($value === "'1'" || $value === '1') {
+                            $value = 'true';
                         }
                     }
                     
-                    // If update fails, try insert with a new ID
-                    if (preg_match('/INSERT INTO "(\w+)"\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/', $insert, $matches)) {
-                        $tableName = $matches[1];
-                        $columns = array_map('trim', explode(',', $matches[2]));
-                        $values = array_map('trim', explode(',', $matches[3]));
-                        
-                        // Remove the ID column and its value
-                        $newColumns = [];
-                        $newValues = [];
-                        
-                        foreach ($columns as $idx => $col) {
-                            $colName = trim($col, '"');
-                            if ($colName !== 'id') {
-                                $newColumns[] = $col;
-                                $newValues[] = $values[$idx];
-                            }
-                        }
-                        
-                        if (!empty($newColumns)) {
-                            $newInsert = 'INSERT INTO "' . $tableName . '" (' . implode(', ', $newColumns) . ') VALUES (' . implode(', ', $newValues) . ')';
-                            try {
-                                DB::statement($newInsert);
-                                $successful++;
-                                continue;
-                            } catch (\Exception $e2) {
-                                // Still failing, log the error
-                            }
+                    // Handle smallint columns
+                    if ($columnName === 'type') {
+                        if ($value === "''" || $value === 'NULL') {
+                            $value = '0';
+                        } elseif ($value === "'1'" || $value === '1' || $value === 'true') {
+                            $value = '1';
+                        } elseif ($value === "'0'" || $value === '0' || $value === 'false') {
+                            $value = '0';
                         }
                     }
+                    
+                    // Handle integer columns
+                    if (in_array($columnName, ['user_id', 'batch'])) {
+                        if ($value === "''" || $value === 'NULL') {
+                            $value = 'NULL';
+                        } elseif ($value === 'true') {
+                            $value = '1';
+                        } elseif ($value === 'false') {
+                            $value = '0';
+                        }
+                    }
+                    
+                    $processedValues[] = $value;
                 }
                 
-                // Handle other errors
-                if (!str_contains($errorMessage, 'duplicate') && !str_contains($errorMessage, 'already exists')) {
-                    $errors[] = $errorMessage . "\nStatement: " . substr($insert, 0, 200) . "...";
+                // Rebuild the INSERT statement
+                $processedInsert = 'INSERT INTO "' . $tableName . '" (' . implode(', ', array_map(function($col) {
+                    return '"' . $col . '"';
+                }, $columns)) . ') VALUES (' . implode(', ', $processedValues) . ')';
+                
+                try {
+                    DB::statement($processedInsert);
+                    $successful++;
+                } catch (\Exception $e) {
+                    $errorMessage = $e->getMessage();
+                    
+                    // Handle specific errors
+                    if (str_contains($errorMessage, 'invalid input syntax for type boolean')) {
+                        // Try to fix boolean columns by replacing empty strings
+                        $fixedInsert = preg_replace("/'',/", "false,", $processedInsert);
+                        $fixedInsert = preg_replace("/,''\)/", ",false)", $fixedInsert);
+                        
+                        try {
+                            DB::statement($fixedInsert);
+                            $successful++;
+                            continue;
+                        } catch (\Exception $e2) {
+                            $errors[] = $errorMessage . "\nStatement: " . substr($insert, 0, 200) . "...";
+                        }
+                    } elseif (!str_contains($errorMessage, 'duplicate') && !str_contains($errorMessage, 'already exists')) {
+                        $errors[] = $errorMessage . "\nStatement: " . substr($insert, 0, 200) . "...";
+                    }
+                }
+            } else {
+                // If parsing fails, try to execute the original insert
+                try {
+                    DB::statement($insert);
+                    $successful++;
+                } catch (\Exception $e) {
+                    if (!str_contains($e->getMessage(), 'duplicate')) {
+                        $errors[] = $e->getMessage() . "\nStatement: " . substr($insert, 0, 200) . "...";
+                    }
                 }
             }
         }
 
-        // Reset sequences again after inserts
-        foreach ($tables as $table) {
-            $tableName = $table->tablename;
+        // Re-enable foreign key checks
+        DB::statement('SET session_replication_role = DEFAULT;');
+
+        // Reset sequences for all tables
+        $tables = ['napi_login', 'kozlemeny', 'kepfeltoltes', 'facebook_posts', 'tiktok_posts', 'hirek', 'naptar', 'adat_eszkozok', 'users'];
+        foreach ($tables as $tableName) {
             try {
-                if (Schema::hasColumn($tableName, 'id')) {
-                    $maxId = DB::table($tableName)->max('id') ?? 0;
-                    DB::statement("ALTER SEQUENCE {$tableName}_id_seq RESTART WITH " . ($maxId + 1));
-                }
+                $maxId = DB::table($tableName)->max('id') ?? 0;
+                DB::statement("ALTER SEQUENCE {$tableName}_id_seq RESTART WITH " . ($maxId + 1));
             } catch (\Exception $e) {
-                // Ignore errors
+                // Ignore errors if table doesn't exist or has no sequence
             }
         }
 
         return response()->json([
             'success' => 'Data added from backup!',
             'inserts_successful' => $successful,
-            'total_inserts' => count($inserts[0]) - count($skippedTables),
+            'total_inserts' => count($inserts),
             'errors' => $errors
         ]);
 
     } catch (\Exception $e) {
+        DB::statement('SET session_replication_role = DEFAULT;');
         return response()->json(['error' => 'Restore failed: ' . $e->getMessage()], 500);
     }
 }
