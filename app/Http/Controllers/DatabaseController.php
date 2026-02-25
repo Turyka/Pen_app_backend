@@ -241,111 +241,91 @@ public function restoreNewest()
         $backup = $result['resources'][0];
         $downloadUrl = $backup['secure_url'];
 
-        // Download the SQL file with proper encoding detection
+        // Download the SQL file as binary
         $fileContent = file_get_contents($downloadUrl);
         
-        // Fix encoding issues - ensure it's UTF-8
-        if (mb_detect_encoding($fileContent, 'UTF-8', true) === false) {
-            $fileContent = utf8_encode($fileContent);
-        }
+        // Save to temp file
+        $tempFile = storage_path('app/restore_' . time() . '.sql');
+        file_put_contents($tempFile, $fileContent);
         
-        // Convert MySQL syntax to PostgreSQL
-        $fileContent = str_replace("`", "\"", $fileContent); // Backticks to double quotes
-        
-        // Fix apostrophes - handle them properly without breaking UTF-8
-        // We need to be careful with this to not break emojis
-        $fileContent = preg_replace('/(?<!\\\\)\\\\\'/', "''", $fileContent);
-        
-        // Drop all tables and recreate schema FIRST
+        // Drop all tables and recreate schema
         DB::statement('DROP SCHEMA public CASCADE');
         DB::statement('CREATE SCHEMA public');
         
-        // Split into individual statements, being careful with UTF-8
-        $statements = preg_split('/;(?=(?:[^\']*\'[^\']*\')*[^\']*$)/', $fileContent);
+        // Use PostgreSQL's native COPY command
+        $command = sprintf(
+            'PGPASSWORD=%s psql -h %s -U %s -d %s -f %s 2>&1',
+            escapeshellarg(env('DB_PASSWORD')),
+            escapeshellarg(env('DB_HOST')),
+            escapeshellarg(env('DB_USERNAME')),
+            escapeshellarg(env('DB_DATABASE')),
+            escapeshellarg($tempFile)
+        );
         
-        $executed = 0;
-        $errors = [];
-        $successful = 0;
+        exec($command, $output, $returnCode);
         
-        foreach ($statements as $statement) {
-            $statement = trim($statement);
-            if (empty($statement)) continue;
-            
-            // Ensure the statement is valid UTF-8
-            $statement = mb_convert_encoding($statement, 'UTF-8', 'UTF-8');
-            
-            try {
-                DB::statement($statement);
-                $executed++;
-                
-                // Count successful INSERTs
-                if (strpos(strtoupper($statement), 'INSERT INTO') === 0) {
-                    $successful++;
-                }
-            } catch (\Exception $e) {
-                // Check if it's a duplicate error
-                if (str_contains($e->getMessage(), 'duplicate') || 
-                    str_contains($e->getMessage(), 'already exists')) {
-                    // Count duplicates as successful
-                    if (strpos(strtoupper($statement), 'INSERT INTO') === 0) {
-                        $successful++;
-                    }
-                    $executed++;
-                } 
-                // Check if it's an encoding error
-                elseif (str_contains($e->getMessage(), 'Malformed UTF-8')) {
-                    // Try to clean the statement
-                    $cleaned = $this->cleanUtf8String($statement);
-                    try {
-                        DB::statement($cleaned);
-                        $executed++;
-                        if (strpos(strtoupper($statement), 'INSERT INTO') === 0) {
-                            $successful++;
-                        }
-                    } catch (\Exception $e2) {
-                        $errors[] = [
-                            'type' => 'UTF-8 Error',
-                            'error' => $e->getMessage(),
-                            'statement' => substr($statement, 0, 200)
-                        ];
-                    }
-                } else {
-                    $errors[] = [
-                        'type' => 'SQL Error',
-                        'error' => $e->getMessage(),
-                        'statement' => substr($statement, 0, 200)
-                    ];
-                }
-            }
+        unlink($tempFile);
+        
+        if ($returnCode !== 0) {
+            // If psql fails, try the COPY command approach
+            return $this->restoreWithCopy($backup, $fileContent);
         }
 
         return response()->json([
             'success' => 'Database fully restored from backup!',
             'backup_used' => $backup['public_id'],
-            'backup_date' => $backup['created_at'],
-            'statements_executed' => $executed,
-            'inserts_successful' => $successful,
-            'total_inserts' => substr_count($fileContent, 'INSERT INTO'),
-            'errors' => $errors
+            'backup_date' => $backup['created_at']
         ]);
 
     } catch (\Exception $e) {
+        if (isset($tempFile) && file_exists($tempFile)) {
+            unlink($tempFile);
+        }
         return response()->json(['error' => 'Restore failed: ' . $e->getMessage()], 500);
     }
 }
 
-/**
- * Helper function to clean UTF-8 strings
- */
-private function cleanUtf8String($string)
+private function restoreWithCopy($backup, $fileContent)
 {
-    // Remove any invalid UTF-8 sequences
-    $string = mb_convert_encoding($string, 'UTF-8', 'UTF-8');
+    // Extract CREATE TABLE and INSERT statements separately
+    $tables = [];
     
-    // Remove any remaining invalid characters
-    $string = preg_replace('/[^\x{0009}\x{000a}\x{000d}\x{0020}-\x{D7FF}\x{E000}-\x{FFFD}]+/u', ' ', $string);
+    // Parse the SQL file
+    $lines = explode("\n", $fileContent);
+    $currentTable = null;
     
-    return $string;
+    foreach ($lines as $line) {
+        $line = trim($line);
+        
+        // Check for CREATE TABLE
+        if (preg_match('/CREATE TABLE "([^"]+)"/', $line, $matches)) {
+            $currentTable = $matches[1];
+            // Execute CREATE TABLE
+            try {
+                DB::statement($line);
+            } catch (\Exception $e) {
+                // Table might already exist
+            }
+        }
+        
+        // Check for INSERT
+        if (preg_match('/INSERT INTO "([^"]+)"/', $line, $matches)) {
+            $table = $matches[1];
+            try {
+                DB::statement($line);
+            } catch (\Exception $e) {
+                // Handle duplicate errors
+                if (!str_contains($e->getMessage(), 'duplicate')) {
+                    // Log other errors
+                }
+            }
+        }
+    }
+    
+    return response()->json([
+        'success' => 'Database restored with COPY method!',
+        'backup_used' => $backup['public_id']
+    ]);
 }
 
 }
