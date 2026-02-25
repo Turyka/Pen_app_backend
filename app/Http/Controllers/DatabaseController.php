@@ -148,7 +148,7 @@ class DatabaseController extends Controller
     }
 
     // 🔹 RESTORE (100% SAFE)
-   public function restoreNewest(Request $request)
+public function restoreNewest(Request $request)
 {
     $this->checkAuth($request);
 
@@ -169,47 +169,55 @@ class DatabaseController extends Controller
 
         $file = file_get_contents($result['resources'][0]['secure_url']);
 
-        // 🔥🔥🔥 KRITIKUS FIXEK 🔥🔥🔥
-
-        // 1. MySQL escape -> PostgreSQL
+        // 🔥 ESCAPE FIX
         $file = str_replace("\\'", "''", $file);
-
-        // 2. Backslash dupla (pl. pathok miatt)
         $file = str_replace("\\\\", "\\\\\\\\", $file);
-
-        // 3. üres string -> NULL
         $file = preg_replace("/,\s*''/", ", NULL", $file);
-
-        // 4. boolean string fix
         $file = preg_replace("/'([01])'/", "$1", $file);
 
-        // 5. UTF-8 biztosítás
-        $file = mb_convert_encoding($file, 'UTF-8', 'UTF-8');
+        // 🔥 SEQUENCE FIX (EZ KELL!)
+        $file = preg_replace(
+            "/DEFAULT nextval\\('[^']+'::regclass\\)/",
+            "",
+            $file
+        );
 
         DB::beginTransaction();
 
-        try {
-            DB::unprepared($file);
+        DB::unprepared($file);
 
-            DB::commit();
+        // 🔥 sequence reset
+        $tables = DB::select("
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+        ");
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Database restored successfully'
-            ]);
+        foreach ($tables as $table) {
+            $tableName = $table->table_name;
 
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'error' => 'Restore failed',
-                'details' => $e->getMessage()
-            ], 500);
+            DB::statement("
+                SELECT setval(
+                    pg_get_serial_sequence('\"{$tableName}\"', 'id'),
+                    COALESCE(MAX(id), 1),
+                    true
+                ) FROM \"{$tableName}\"
+            ");
         }
 
-    } catch (\Exception $e) {
+        DB::commit();
+
         return response()->json([
-            'error' => 'Restore failed: ' . $e->getMessage()
+            'success' => true,
+            'message' => 'Database restored successfully'
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        return response()->json([
+            'error' => 'Restore failed',
+            'details' => $e->getMessage()
         ], 500);
     }
 }
