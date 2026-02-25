@@ -49,7 +49,7 @@ Route::get('/database/restore-newest', [DatabaseController::class, 'restoreNewes
 //Route::get('/hirek', [HirController::class, 'index']);
 Route::get('/hirek/kap', [HirController::class, 'scrape']);
 Route::get('/hirek/torol', [HirController::class, 'torol']);
-Route::get('/migrate-refresh', [DatabaseController::class, 'migrateRefresh']);
+    Route::get('/migrate-refresh', [DatabaseController::class, 'migrateRefresh']);
 
 
 
