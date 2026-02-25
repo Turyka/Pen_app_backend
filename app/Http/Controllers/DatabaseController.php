@@ -220,156 +220,235 @@ class DatabaseController extends Controller
     }
 
     public function restoreNewest()
-    {
-        try {
-            // Initialize Cloudinary
-            $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
-            
-            // Get the newest backup
-            $result = $cloudinary->adminApi()->assets([
-                'type' => 'upload',
-                'prefix' => 'adatbazis',
-                'resource_type' => 'raw',
-                'max_results' => 1,
-                'sort_by' => [['created_at' => 'desc']]
-            ]);
+{
+    try {
+        // Initialize Cloudinary
+        $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
+        
+        // Get the newest backup
+        $result = $cloudinary->adminApi()->assets([
+            'type' => 'upload',
+            'prefix' => 'adatbazis',
+            'resource_type' => 'raw',
+            'max_results' => 1,
+            'sort_by' => [['created_at' => 'desc']]
+        ]);
 
-            if (empty($result['resources'])) {
-                return response()->json(['error' => 'No backups found'], 404);
-            }
+        if (empty($result['resources'])) {
+            return response()->json(['error' => 'No backups found'], 404);
+        }
 
-            $backup = $result['resources'][0];
-            $downloadUrl = $backup['secure_url'];
+        $backup = $result['resources'][0];
+        $downloadUrl = $backup['secure_url'];
 
-            // Download the SQL file
-            $fileContent = file_get_contents($downloadUrl);
-            
-            // FIX 1: Handle UTF-8 encoding properly
-            $fileContent = mb_convert_encoding($fileContent, 'UTF-8', 'UTF-8');
-            
-            // FIX 2: Replace backticks with double quotes
-            $fileContent = str_replace("`", "\"", $fileContent);
-            
-            // FIX 3: Fix boolean values (empty strings to NULL)
-            $fileContent = preg_replace_callback(
-                '/INSERT INTO[^;]+;/',
-                function($match) {
-                    $statement = $match[0];
-                    
-                    // Fix boolean fields - replace empty strings with NULL
-                    $statement = preg_replace_callback(
-                        '/VALUES\s*\(([^)]+)\)/',
-                        function($valuesMatch) {
-                            $values = $valuesMatch[1];
+        // Download the SQL file
+        $fileContent = file_get_contents($downloadUrl);
+        
+        // Handle UTF-8 encoding properly
+        $fileContent = mb_convert_encoding($fileContent, 'UTF-8', 'UTF-8');
+        
+        // Replace backticks with double quotes
+        $fileContent = str_replace("`", "\"", $fileContent);
+        
+        // Fix the specific issues
+        $fileContent = preg_replace_callback(
+            '/INSERT INTO[^;]+;/',
+            function($match) {
+                $statement = $match[0];
+                
+                // FIX 1: Convert boolean true/false to appropriate values based on column context
+                
+                // For ID columns - convert boolean to appropriate ID values
+                $statement = preg_replace_callback(
+                    '/INSERT INTO "(\w+)"\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/',
+                    function($tableMatch) {
+                        $tableName = $tableMatch[1];
+                        $columns = array_map('trim', explode(',', $tableMatch[2]));
+                        $values = array_map('trim', explode(',', $tableMatch[3]));
+                        
+                        // Process each value based on column name
+                        foreach ($values as $index => &$value) {
+                            $columnName = str_replace('"', '', $columns[$index] ?? '');
                             
-                            // Split values carefully (this is a simple split, might need improvement for complex cases)
-                            $valueArray = explode(',', $values);
-                            foreach ($valueArray as &$value) {
-                                $value = trim($value);
-                                // If it's an empty string, convert to NULL
-                                if ($value === "''") {
+                            // Handle ID columns (should be integers, not booleans)
+                            if ($columnName === 'id' || $columnName === 'user_id' || $columnName === 'batch') {
+                                if ($value === 'true') {
+                                    // Find the next available ID or use 1 as default
+                                    $value = '1';
+                                } elseif ($value === 'false') {
                                     $value = 'NULL';
                                 }
-                                // Fix MySQL boolean strings
-                                if ($value === "'0'") {
+                            }
+                            
+                            // Handle boolean columns (should be true/false)
+                            if ($columnName === 'ertesites' || $columnName === 'kozlemenyErtesites' || $columnName === 'naptarErtesites') {
+                                if ($value === "''" || $value === 'NULL') {
+                                    $value = 'false';
+                                } elseif ($value === "'1'" || $value === '1') {
+                                    $value = 'true';
+                                } elseif ($value === "'0'" || $value === '0') {
                                     $value = 'false';
                                 }
-                                if ($value === "'1'") {
-                                    $value = 'true';
+                            }
+                            
+                            // Handle type column in kozlemeny table (should be integer)
+                            if ($tableName === 'kozlemeny' && $columnName === 'type') {
+                                if ($value === 'false' || $value === 'true') {
+                                    $value = $value === 'true' ? '1' : '0';
                                 }
                             }
-                            return 'VALUES (' . implode(', ', $valueArray) . ')';
-                        },
-                        $statement
-                    );
-                    
-                    // FIX 4: Fix apostrophe escaping (MySQL \' to PostgreSQL '')
-                    $statement = preg_replace_callback(
-                        "/'([^']*)'/",
-                        function($quoteMatch) {
-                            $content = $quoteMatch[1];
-                            // Replace MySQL-style escaped quotes with PostgreSQL style
-                            $content = str_replace("\\'", "''", $content);
-                            $content = str_replace('\\"', '"', $content);
-                            $content = str_replace("\\r\\n", "\r\n", $content);
-                            $content = str_replace("\\n", "\n", $content);
-                            $content = str_replace("\\r", "\r", $content);
-                            $content = str_replace("\\t", "\t", $content);
-                            $content = str_replace("\\\\", "\\", $content);
-                            return "'" . $content . "'";
-                        },
-                        $statement
-                    );
-                    
-                    return $statement;
-                },
-                $fileContent
-            );
-            
-            // Extract all INSERT statements
-            $inserts = [];
-            preg_match_all('/INSERT INTO[^;]+;/', $fileContent, $inserts);
-            
-            $successful = 0;
-            $errors = [];
-            
-            foreach ($inserts[0] as $insert) {
-                try {
-                    DB::statement($insert);
-                    $successful++;
-                } catch (\Exception $e) {
-                    // Try one more fix for common errors
-                    $errorMessage = $e->getMessage();
-                    
-                    if (str_contains($errorMessage, 'invalid input syntax for type boolean')) {
-                        // Try to fix boolean columns by replacing empty strings with NULL
-                        $fixedInsert = preg_replace("/'',/", "NULL,", $insert);
-                        $fixedInsert = preg_replace("/,''\)/", ",NULL)", $fixedInsert);
-                        
-                        // Also try to fix '0' and '1' strings to boolean
-                        $fixedInsert = preg_replace("/'0'/", "false", $fixedInsert);
-                        $fixedInsert = preg_replace("/'1'/", "true", $fixedInsert);
-                        
-                        try {
-                            DB::statement($fixedInsert);
-                            $successful++;
-                            continue;
-                        } catch (\Exception $e2) {
-                            // Still failing, try third approach - remove the problematic insert
-                            if (str_contains($errorMessage, 'ertesites') || str_contains($errorMessage, 'boolean')) {
-                                // Skip this insert if it's a boolean column issue
-                                $errors[] = "Skipped boolean insert: " . substr($insert, 0, 100) . "...";
-                                continue;
+                            
+                            // Fix empty strings for non-text columns
+                            if ($value === "''" && !in_array($columnName, ['title', 'description', 'created', 'edited', 'url', 'image_url', 'fcm_token', 'device_id', 'password', 'name', 'teljes_nev', 'szak', 'titulus', 'remember_token'])) {
+                                $value = 'NULL';
+                            }
+                            
+                            // Fix apostrophe escaping
+                            if (preg_match('/^\'(.+)\'$/s', $value, $matches)) {
+                                $content = $matches[1];
+                                $content = str_replace("\\'", "''", $content);
+                                $content = str_replace('\\"', '"', $content);
+                                $content = str_replace("\\r\\n", "\r\n", $content);
+                                $content = str_replace("\\n", "\n", $content);
+                                $content = str_replace("\\r", "\r", $content);
+                                $content = str_replace("\\t", "\t", $content);
+                                $content = str_replace("\\\\", "\\", $content);
+                                $value = "'" . $content . "'";
                             }
                         }
-                    } elseif (str_contains($errorMessage, 'syntax error at or near')) {
-                        // Try to fix apostrophe issues
-                        $fixedInsert = preg_replace("/([^\\])'([^']*)'/", "$1''$2''", $insert);
+                        
+                        return 'INSERT INTO "' . $tableName . '" (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ')';
+                    },
+                    $statement
+                );
+                
+                return $statement;
+            },
+            $fileContent
+        );
+        
+        // Extract all INSERT statements
+        $inserts = [];
+        preg_match_all('/INSERT INTO[^;]+;/', $fileContent, $inserts);
+        
+        $successful = 0;
+        $errors = [];
+        $skippedTables = ['migrations']; // Skip migrations table to avoid conflicts
+        
+        foreach ($inserts[0] as $insert) {
+            // Skip migrations table
+            if (preg_match('/INSERT INTO "migrations"/', $insert)) {
+                continue;
+            }
+            
+            try {
+                DB::statement($insert);
+                $successful++;
+            } catch (\Exception $e) {
+                $errorMessage = $e->getMessage();
+                
+                // Try specific fixes based on error type
+                if (str_contains($errorMessage, 'Datatype mismatch') || str_contains($errorMessage, 'invalid input syntax')) {
+                    
+                    // Fix for ID columns being boolean
+                    $fixedInsert = preg_replace('/VALUES\s*\(\s*true\s*,/', 'VALUES (1,', $insert);
+                    $fixedInsert = preg_replace('/VALUES\s*\(\s*false\s*,/', 'VALUES (0,', $fixedInsert);
+                    
+                    // Fix for boolean columns
+                    $fixedInsert = preg_replace('/,\s*true\s*,/', ', true,', $fixedInsert);
+                    $fixedInsert = preg_replace('/,\s*false\s*,/', ', false,', $fixedInsert);
+                    $fixedInsert = preg_replace('/,\s*true\s*\)/', ', true)', $fixedInsert);
+                    $fixedInsert = preg_replace('/,\s*false\s*\)/', ', false)', $fixedInsert);
+                    
+                    // Fix for empty strings in boolean columns
+                    $fixedInsert = preg_replace("/''/", 'false', $fixedInsert);
+                    
+                    try {
+                        DB::statement($fixedInsert);
+                        $successful++;
+                        continue;
+                    } catch (\Exception $e2) {
+                        // If still failing, try to extract and fix the specific problematic value
+                        if (preg_match('/column "([^"]+)" is of type ([^ ]+)/', $errorMessage, $typeMatches)) {
+                            $problemColumn = $typeMatches[1];
+                            $expectedType = $typeMatches[2];
+                            
+                            // Try to fix based on column and expected type
+                            if ($expectedType === 'bigint' || $expectedType === 'integer') {
+                                $fixedInsert = preg_replace_callback(
+                                    '/VALUES\s*\(([^)]+)\)/',
+                                    function($valueMatch) use ($problemColumn, $insert) {
+                                        $values = explode(',', $valueMatch[1]);
+                                        // Extract column names from the INSERT
+                                        if (preg_match('/\(([^)]+)\)\s*VALUES/', $insert, $colMatch)) {
+                                            $columns = array_map('trim', explode(',', $colMatch[1]));
+                                            foreach ($columns as $idx => $col) {
+                                                $col = trim($col, '" ');
+                                                if ($col === $problemColumn && isset($values[$idx])) {
+                                                    // Convert boolean to integer
+                                                    if (trim($values[$idx]) === 'true') {
+                                                        $values[$idx] = '1';
+                                                    } elseif (trim($values[$idx]) === 'false') {
+                                                        $values[$idx] = '0';
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        return 'VALUES (' . implode(', ', $values) . ')';
+                                    },
+                                    $fixedInsert
+                                );
+                                
+                                try {
+                                    DB::statement($fixedInsert);
+                                    $successful++;
+                                    continue;
+                                } catch (\Exception $e3) {
+                                    // Give up on this insert
+                                }
+                            }
+                        }
+                    }
+                } elseif (str_contains($errorMessage, 'syntax error at or near')) {
+                    // Fix apostrophe issues
+                    $fixedInsert = preg_replace("/([^\\])'([^']*)'/", "$1''$2''", $insert);
+                    try {
+                        DB::statement($fixedInsert);
+                        $successful++;
+                        continue;
+                    } catch (\Exception $e2) {
+                        // Still failing, log the error
+                    }
+                } elseif (str_contains($errorMessage, 'not-null constraint')) {
+                    // For not-null violations, try to set a default value
+                    if (str_contains($errorMessage, 'url') && str_contains($insert, 'facebook_posts')) {
+                        $fixedInsert = str_replace("NULL, 'https://", "'https://res.cloudinary.com/dummy.jpg', 'https://", $insert);
                         try {
                             DB::statement($fixedInsert);
                             $successful++;
                             continue;
                         } catch (\Exception $e2) {
-                            // Still failing, log the error
+                            // Still failing
                         }
                     }
-                    
-                    // Ignore duplicate errors, log others
-                    if (!str_contains($errorMessage, 'duplicate') && !str_contains($errorMessage, 'already exists')) {
-                        $errors[] = $errorMessage . "\nStatement: " . substr($insert, 0, 200) . "...";
-                    }
+                }
+                
+                // Log error if not duplicate
+                if (!str_contains($errorMessage, 'duplicate') && !str_contains($errorMessage, 'already exists')) {
+                    $errors[] = $errorMessage . "\nStatement: " . substr($insert, 0, 200) . "...";
                 }
             }
-
-            return response()->json([
-                'success' => 'Data added from backup!',
-                'inserts_successful' => $successful,
-                'total_inserts' => count($inserts[0]),
-                'errors' => $errors
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Restore failed: ' . $e->getMessage()], 500);
         }
+
+        return response()->json([
+            'success' => 'Data added from backup!',
+            'inserts_successful' => $successful,
+            'total_inserts' => count($inserts[0]) - count($skippedTables), // Adjust for skipped tables
+            'errors' => $errors
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Restore failed: ' . $e->getMessage()], 500);
     }
+}
 }
