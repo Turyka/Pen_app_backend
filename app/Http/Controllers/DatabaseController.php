@@ -6,27 +6,20 @@ use Illuminate\Http\Request;
 use Cloudinary\Cloudinary;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class DatabaseController extends Controller
 {
     public function migrateRefresh()
     {
         try {
-            // Force drop all tables first
             Artisan::call('db:wipe', ['--force' => true]);
-            
-            // Then run migrations and seeds
             $migrateStatus = Artisan::call('migrate', ['--force' => true]);
             $seedStatus = Artisan::call('db:seed', ['--force' => true]);
             
-            $output = Artisan::output();
-
             return response()->json([
                 'message' => 'Database refreshed successfully!',
                 'migrate_status' => $migrateStatus,
                 'seed_status' => $seedStatus,
-                'output' => $output
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -39,7 +32,6 @@ class DatabaseController extends Controller
     public function refreshAdatEszkozok()
     {
         DB::table('adat_eszkozok')->truncate();
-
         return response()->json(['message' => 'All data from adat_eszkozok has been deleted']);
     }
 
@@ -50,23 +42,35 @@ class DatabaseController extends Controller
         $filePath = storage_path('app/' . $fileName);
 
         try {
-            $sqlContent = "-- Real Database Backup\n";
-            $sqlContent .= "-- Created: " . now()->toDateTimeString() . "\n";
-            $sqlContent .= "-- Database: " . env('DB_DATABASE') . "\n";
-            $sqlContent .= "-- Driver: " . env('DB_CONNECTION') . "\n\n";
-            
             $driver = env('DB_CONNECTION');
             
             if ($driver === 'mysql') {
-                $sqlContent .= $this->generateMySQLBackup();
+                $command = sprintf(
+                    'mysqldump -h %s -u %s %s %s > %s',
+                    env('DB_HOST'),
+                    env('DB_USERNAME'),
+                    env('DB_PASSWORD') ? '-p' . env('DB_PASSWORD') : '',
+                    env('DB_DATABASE'),
+                    $filePath
+                );
             } elseif ($driver === 'pgsql') {
-                $sqlContent .= $this->generatePostgreSQLBackup();
+                putenv("PGPASSWORD=" . env('DB_PASSWORD'));
+                $command = sprintf(
+                    'pg_dump -h %s -U %s -d %s -f %s',
+                    env('DB_HOST'),
+                    env('DB_USERNAME'),
+                    env('DB_DATABASE'),
+                    $filePath
+                );
             } else {
                 throw new \Exception("Unsupported database driver: " . $driver);
             }
-
-            // Save to file
-            file_put_contents($filePath, $sqlContent);
+            
+            exec($command, $output, $returnCode);
+            
+            if ($returnCode !== 0) {
+                throw new \Exception("Backup command failed");
+            }
 
             // Upload to Cloudinary
             $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
@@ -76,155 +80,27 @@ class DatabaseController extends Controller
             ]);
 
             unlink($filePath);
+            
+            if ($driver === 'pgsql') {
+                putenv("PGPASSWORD");
+            }
 
             return response()->json([
-                'success' => 'Real database backup saved to Cloudinary!',
+                'success' => 'Complete database backup saved to Cloudinary!',
                 'download_url' => $result['secure_url'],
                 'public_id' => $result['public_id'],
-                'driver' => $driver
+                'driver' => $driver,
+                'filename' => $fileName
             ]);
 
         } catch (\Exception $e) {
             if (file_exists($filePath)) unlink($filePath);
-            return response()->json(['error' => 'Failed: ' . $e->getMessage()], 500);
+            if ($driver === 'pgsql') putenv("PGPASSWORD");
+            return response()->json(['error' => 'Backup failed: ' . $e->getMessage()], 500);
         }
     }
 
-    private function generateMySQLBackup()
-    {
-        $sqlContent = "";
-        
-        // Get all table names
-        $tables = DB::select('SHOW TABLES');
-        $dbName = env('DB_DATABASE');
-        $firstTable = (array)$tables[0];
-        $propertyName = array_keys($firstTable)[0];
-        
-        foreach ($tables as $table) {
-            $tableArray = (array)$table;
-            $tableName = $tableArray[$propertyName];
-            
-            // Get table structure
-            $createTable = DB::select("SHOW CREATE TABLE `{$tableName}`");
-            $createTableArray = (array)$createTable[0];
-            $createStatement = $createTableArray['Create Table'];
-            
-            $sqlContent .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
-            $sqlContent .= $createStatement . ";\n\n";
-            
-            // Get all data from the table
-            $rows = DB::table($tableName)->get();
-            
-            if ($rows->count() > 0) {
-                foreach ($rows as $row) {
-                    $columns = [];
-                    $values = [];
-                    
-                    foreach ($row as $column => $value) {
-                        $columns[] = "`{$column}`";
-                        if (is_bool($value)) {
-                            $values[] = $value ? '1' : '0';
-                        } elseif ($value === null) {
-                            $values[] = 'NULL';
-                        } elseif ($value === '') {
-                            $values[] = 'NULL';
-                        } else {
-                            $values[] = "'" . addslashes($value) . "'";
-                        }
-                    }
-                    
-                    $sqlContent .= "INSERT INTO `{$tableName}` (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ");\n";
-                }
-                $sqlContent .= "\n";
-            }
-        }
-        
-        return $sqlContent;
-    }
-
-    private function generatePostgreSQLBackup()
-    {
-        $sqlContent = "";
-        
-        // Get all table names
-        $tables = DB::select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'");
-        
-        foreach ($tables as $table) {
-            $tableName = $table->table_name;
-            
-            // Drop table
-            $sqlContent .= "DROP TABLE IF EXISTS \"{$tableName}\" CASCADE;\n";
-            
-            // Get table structure using information_schema instead of pg_get_tabledef
-            $columns = DB::select("
-                SELECT 
-                    column_name,
-                    data_type,
-                    is_nullable,
-                    column_default,
-                    character_maximum_length
-                FROM information_schema.columns 
-                WHERE table_schema = 'public' AND table_name = '{$tableName}'
-                ORDER BY ordinal_position
-            ");
-            
-            // Build CREATE TABLE statement manually
-            $sqlContent .= "CREATE TABLE \"{$tableName}\" (\n";
-            
-            $columnDefinitions = [];
-            foreach ($columns as $column) {
-                $definition = "\"{$column->column_name}\" {$column->data_type}";
-                
-                // Add length for character types
-                if ($column->character_maximum_length) {
-                    $definition .= "({$column->character_maximum_length})";
-                }
-                
-                // Handle nullable
-                if ($column->is_nullable === 'NO') {
-                    $definition .= " NOT NULL";
-                }
-                
-                // Handle default values
-                if ($column->column_default) {
-                    $definition .= " DEFAULT {$column->column_default}";
-                }
-                
-                $columnDefinitions[] = $definition;
-            }
-            
-            $sqlContent .= implode(",\n", $columnDefinitions) . "\n);\n\n";
-            
-            // Get all data from the table
-            $rows = DB::table($tableName)->get();
-            
-            if ($rows->count() > 0) {
-                foreach ($rows as $row) {
-                    $columns = [];
-                    $values = [];
-                    
-                    foreach ($row as $column => $value) {
-                        $columns[] = "\"{$column}\"";
-                        if ($value === null) {
-                            $values[] = 'NULL';
-                        } elseif (is_bool($value)) {
-                            $values[] = $value ? 'true' : 'false';
-                        } else {
-                            // Fix: Proper PostgreSQL escaping (double apostrophes)
-                            $escaped = str_replace("'", "''", $value);
-                            $values[] = "'" . $escaped . "'";
-                        }
-                    }
-                    
-                    $sqlContent .= "INSERT INTO \"{$tableName}\" (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ");\n";
-                }
-                $sqlContent .= "\n";
-            }
-        }
-        
-        return $sqlContent;
-    }
-
+    // 🔹 Restore the newest backup from Cloudinary
     public function restoreNewest(Request $request)
     {
         try {
@@ -246,203 +122,134 @@ class DatabaseController extends Controller
 
             $backup = $result['resources'][0];
             $downloadUrl = $backup['secure_url'];
+            $tempFile = storage_path('app/restore_' . time() . '.sql');
 
-            // Download the SQL file
+            // Download the backup
+            file_put_contents($tempFile, file_get_contents($downloadUrl));
+            
+            $driver = env('DB_CONNECTION');
+            
+            // Drop all tables first
+            if ($driver === 'mysql') {
+                DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+                $tables = DB::select('SHOW TABLES');
+                $dbName = env('DB_DATABASE');
+                $firstTable = (array)$tables[0];
+                $propertyName = array_keys($firstTable)[0];
+                
+                foreach ($tables as $table) {
+                    $tableArray = (array)$table;
+                    DB::statement('DROP TABLE IF EXISTS `' . $tableArray[$propertyName] . '`');
+                }
+                DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+            } elseif ($driver === 'pgsql') {
+                DB::statement('DROP SCHEMA public CASCADE');
+                DB::statement('CREATE SCHEMA public');
+            }
+
+            // Restore from backup
+            if ($driver === 'mysql') {
+                $command = sprintf(
+                    'mysql -h %s -u %s %s %s < %s 2>&1',
+                    env('DB_HOST'),
+                    env('DB_USERNAME'),
+                    env('DB_PASSWORD') ? '-p' . env('DB_PASSWORD') : '',
+                    env('DB_DATABASE'),
+                    $tempFile
+                );
+            } elseif ($driver === 'pgsql') {
+                putenv("PGPASSWORD=" . env('DB_PASSWORD'));
+                $command = sprintf(
+                    'psql -h %s -U %s -d %s -f %s 2>&1',
+                    env('DB_HOST'),
+                    env('DB_USERNAME'),
+                    env('DB_DATABASE'),
+                    $tempFile
+                );
+            }
+            
+            exec($command, $output, $returnCode);
+            
+            unlink($tempFile);
+            
+            if ($driver === 'pgsql') {
+                putenv("PGPASSWORD");
+            }
+
+            if ($returnCode !== 0) {
+                throw new \Exception("Restore command failed: " . implode("\n", $output));
+            }
+
+            return response()->json([
+                'success' => 'Database completely restored from backup!',
+                'backup_used' => $backup['public_id'],
+                'backup_date' => $backup['created_at'],
+                'driver' => $driver
+            ]);
+
+        } catch (\Exception $e) {
+            if (isset($tempFile) && file_exists($tempFile)) unlink($tempFile);
+            if (isset($driver) && $driver === 'pgsql') putenv("PGPASSWORD");
+            return response()->json(['error' => 'Restore failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // 🔹 Alternative restore method using PHP (if shell_exec is disabled)
+    public function restoreNewestPHP(Request $request)
+    {
+        try {
+            $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
+            
+            $result = $cloudinary->adminApi()->assets([
+                'type' => 'upload',
+                'prefix' => 'adatbazis',
+                'resource_type' => 'raw',
+                'max_results' => 1,
+                'sort_by' => [['created_at' => 'desc']]
+            ]);
+
+            if (empty($result['resources'])) {
+                return response()->json(['error' => 'No backups found'], 404);
+            }
+
+            $backup = $result['resources'][0];
+            $downloadUrl = $backup['secure_url'];
             $fileContent = file_get_contents($downloadUrl);
             
-            // Convert MySQL syntax to PostgreSQL (if restoring from MySQL backup to PostgreSQL)
-            $fileContent = str_replace("`", "\"", $fileContent); // Backticks to double quotes
+            // Drop all tables
+            DB::statement('DROP SCHEMA public CASCADE');
+            DB::statement('CREATE SCHEMA public');
             
-            // FIX: Better apostrophe handling for PostgreSQL
-            $fileContent = str_replace("\\'", "''", $fileContent);
-            
-            // Get boolean columns info
-            $booleanColumns = $this->getBooleanColumns();
-            
-            // Split into individual statements
+            // Execute the SQL
             $statements = explode(';', $fileContent);
-            
-            // Separate CREATE TABLE and INSERT statements
-            $createTableStatements = [];
-            $insertStatements = [];
-            $otherStatements = [];
+            $executed = 0;
+            $errors = [];
             
             foreach ($statements as $statement) {
                 $statement = trim($statement);
-                if (empty($statement)) continue;
-                
-                $upperStatement = strtoupper($statement);
-                
-                if (strpos($upperStatement, 'CREATE TABLE') === 0) {
-                    $createTableStatements[] = $statement;
-                } elseif (strpos($upperStatement, 'INSERT INTO') === 0) {
-                    // Process INSERT statements for boolean columns
-                    $statement = $this->processBooleanValues($statement, $booleanColumns);
-                    $insertStatements[] = $statement;
-                } else {
-                    $otherStatements[] = $statement;
-                }
-            }
-            
-            $executed = 0;
-            $errors = [];
-            $successful = 0;
-            
-            // First, execute all CREATE TABLE statements
-            foreach ($createTableStatements as $statement) {
-                try {
-                    DB::statement($statement . ';');
-                    $executed++;
-                } catch (\Exception $e) {
-                    // Check if table already exists
-                    if (!str_contains($e->getMessage(), 'already exists')) {
-                        $errors[] = [
-                            'type' => 'CREATE TABLE',
-                            'statement' => substr($statement, 0, 100) . '...',
-                            'error' => $e->getMessage()
-                        ];
-                    } else {
-                        $executed++; // Count as executed if table exists
-                    }
-                }
-            }
-            
-            // Then, execute all INSERT statements
-            foreach ($insertStatements as $statement) {
-                try {
-                    DB::statement($statement . ';');
-                    $executed++;
-                    $successful++;
-                } catch (\Exception $e) {
-                    // Only log non-duplicate errors
-                    if (!str_contains($e->getMessage(), 'duplicate') && 
-                        !str_contains($e->getMessage(), 'already exists')) {
-                        
-                        // Special handling for "relation does not exist" errors
-                        if (str_contains($e->getMessage(), 'does not exist')) {
-                            $errors[] = [
-                                'type' => 'INSERT - TABLE MISSING',
-                                'statement' => substr($statement, 0, 100) . '...',
-                                'error' => $e->getMessage()
-                            ];
-                        } else {
-                            $errors[] = [
-                                'type' => 'INSERT',
-                                'statement' => substr($statement, 0, 100) . '...',
-                                'error' => $e->getMessage()
-                            ];
+                if (!empty($statement)) {
+                    try {
+                        DB::statement($statement);
+                        $executed++;
+                    } catch (\Exception $e) {
+                        // Ignore duplicate errors
+                        if (!str_contains($e->getMessage(), 'duplicate') && 
+                            !str_contains($e->getMessage(), 'already exists')) {
+                            $errors[] = $e->getMessage();
                         }
-                    } else {
-                        // Count duplicates as successful since data exists
-                        $successful++;
-                    }
-                }
-            }
-            
-            // Finally, execute other statements (ALTER TABLE, constraints, etc.)
-            foreach ($otherStatements as $statement) {
-                try {
-                    DB::statement($statement . ';');
-                    $executed++;
-                } catch (\Exception $e) {
-                    // Ignore errors for other statements unless they're critical
-                    if (!str_contains($e->getMessage(), 'already exists') &&
-                        !str_contains($e->getMessage(), 'duplicate')) {
-                        $errors[] = [
-                            'type' => 'OTHER',
-                            'statement' => substr($statement, 0, 100) . '...',
-                            'error' => $e->getMessage()
-                        ];
                     }
                 }
             }
 
             return response()->json([
-                'success' => 'Database restored from backup!',
+                'success' => 'Database restored using PHP method!',
                 'backup_used' => $backup['public_id'],
-                'backup_date' => $backup['created_at'],
                 'statements_executed' => $executed,
-                'create_tables' => count($createTableStatements),
-                'inserts' => count($insertStatements),
-                'inserts_successful' => $successful,
                 'errors' => $errors
             ]);
 
         } catch (\Exception $e) {
             return response()->json(['error' => 'Restore failed: ' . $e->getMessage()], 500);
         }
-    }
-
-    /**
-     * Get all boolean columns from the database
-     */
-    private function getBooleanColumns()
-    {
-        try {
-            $booleanColumns = [];
-            
-            // Only for PostgreSQL
-            if (env('DB_CONNECTION') !== 'pgsql') {
-                return $booleanColumns;
-            }
-            
-            // Get all tables
-            $tables = DB::select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'");
-            
-            foreach ($tables as $table) {
-                // Get boolean columns for each table
-                $columns = DB::select("
-                    SELECT column_name 
-                    FROM information_schema.columns 
-                    WHERE table_schema = 'public' 
-                    AND table_name = ?
-                    AND data_type IN ('boolean', 'bool')
-                ", [$table->table_name]);
-                
-                foreach ($columns as $column) {
-                    $booleanColumns[$table->table_name][] = $column->column_name;
-                }
-            }
-            
-            return $booleanColumns;
-        } catch (\Exception $e) {
-            // If we can't get boolean columns, return empty array
-            return [];
-        }
-    }
-
-    /**
-     * Process INSERT statement to convert MySQL boolean values to PostgreSQL format
-     */
-    private function processBooleanValues($insert, $booleanColumns)
-    {
-        // Extract table name
-        preg_match('/INSERT INTO "([^"]+)"/', $insert, $matches);
-        if (empty($matches)) {
-            return $insert;
-        }
-        $tableName = $matches[1];
-        
-        // If this table has boolean columns, process them
-        if (isset($booleanColumns[$tableName])) {
-            foreach ($booleanColumns[$tableName] as $boolColumn) {
-                // Look for patterns like: "column_name", 'value'
-                $pattern = '/"' . preg_quote($boolColumn, '/') . '",\s*\'([^\']*)\'/';
-                
-                $insert = preg_replace_callback($pattern, function($matches) use ($boolColumn) {
-                    $value = $matches[1];
-                    
-                    // Convert MySQL-style boolean to PostgreSQL boolean
-                    if ($value === '' || $value === '0' || $value === 'NULL') {
-                        return '"' . $boolColumn . '", false';
-                    } elseif ($value === '1') {
-                        return '"' . $boolColumn . '", true';
-                    }
-                    return $matches[0];
-                }, $insert);
-            }
-        }
-        
-        return $insert;
     }
 }
