@@ -6,305 +6,194 @@ use Illuminate\Http\Request;
 use Cloudinary\Cloudinary;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class DatabaseController extends Controller
 {
-public function migrateRefresh(Request $request)
-{
-    if ($request->query('titkos') !== env('API_SECRET')) {
-            return response()->json([
+    private function checkAuth($request)
+    {
+        if ($request->query('titkos') !== env('API_SECRET')) {
+            abort(response()->json([
                 'success' => false,
                 'error' => 'Unauthorized'
-            ], 403);
+            ], 403));
         }
-
-    try {
-        // Force drop all tables first
-        Artisan::call('db:wipe', ['--force' => true]);
-        
-        // Then run migrations and seeds
-        $migrateStatus = Artisan::call('migrate', ['--force' => true]);
-        $seedStatus = Artisan::call('db:seed', ['--force' => true]);
-        
-        $output = Artisan::output();
-
-        return response()->json([
-            'message' => 'Database refreshed successfully!',
-            'migrate_status' => $migrateStatus,
-            'seed_status' => $seedStatus,
-            'output' => $output
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'message' => 'Migration failed',
-            'error' => $e->getMessage(),
-        ], 500);
     }
-}
 
+    public function migrateRefresh(Request $request)
+    {
+        $this->checkAuth($request);
 
-public function refreshAdatEszkozok(Request $request)
-{
-    if ($request->query('titkos') !== env('API_SECRET')) {
+        try {
+            Artisan::call('db:wipe', ['--force' => true]);
+            Artisan::call('migrate', ['--force' => true]);
+            Artisan::call('db:seed', ['--force' => true]);
+
             return response()->json([
-                'success' => false,
-                'error' => 'Unauthorized'
-            ], 403);
-        }
-
-    DB::table('adat_eszkozok')->truncate();
-
-    return response()->json(['message' => 'All data from adat_eszkozok has been deleted']);
-}
-
-
-    // 🔹 Backup database and upload to Cloudinary
-public function backup(Request $request)
-{
-     if ($request->query('titkos') !== env('API_SECRET')) {
+                'message' => 'Database refreshed successfully!',
+                'output' => Artisan::output()
+            ]);
+        } catch (\Exception $e) {
             return response()->json([
-                'success' => false,
-                'error' => 'Unauthorized'
-            ], 403);
+                'message' => 'Migration failed',
+                'error' => $e->getMessage(),
+            ], 500);
         }
+    }
 
-    $fileName = 'backup_' . now()->format('Y_m_d_His') . '.sql';
-    $filePath = storage_path('app/' . $fileName);
+    public function refreshAdatEszkozok(Request $request)
+    {
+        $this->checkAuth($request);
 
-    try {
-        $sqlContent = "-- Real Database Backup\n";
-        $sqlContent .= "-- Created: " . now()->toDateTimeString() . "\n";
-        $sqlContent .= "-- Database: " . env('DB_DATABASE') . "\n";
-        $sqlContent .= "-- Driver: " . env('DB_CONNECTION') . "\n\n";
-        
-        $driver = env('DB_CONNECTION');
-        
-        if ($driver === 'mysql') {
-            $sqlContent .= $this->generateMySQLBackup();
-        } elseif ($driver === 'pgsql') {
+        DB::table('adat_eszkozok')->truncate();
+
+        return response()->json(['message' => 'All data deleted']);
+    }
+
+    // 🔹 BACKUP
+    public function backup(Request $request)
+    {
+        $this->checkAuth($request);
+
+        $fileName = 'backup_' . now()->format('Y_m_d_His') . '.sql';
+        $filePath = storage_path('app/' . $fileName);
+
+        try {
+            $sqlContent = "-- PostgreSQL Backup\n";
+            $sqlContent .= "-- Created: " . now() . "\n\n";
+
             $sqlContent .= $this->generatePostgreSQLBackup();
-        } else {
-            throw new \Exception("Unsupported database driver: " . $driver);
-        }
 
-        // Save to file
-        file_put_contents($filePath, $sqlContent);
+            file_put_contents($filePath, $sqlContent);
 
-        // Upload to Cloudinary
-        $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
-        $result = $cloudinary->uploadApi()->upload($filePath, [
-            'folder' => 'adatbazis',
-            'resource_type' => 'raw',
-        ]);
+            $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
 
-        unlink($filePath);
+            $result = $cloudinary->uploadApi()->upload($filePath, [
+                'folder' => 'adatbazis',
+                'resource_type' => 'raw',
+            ]);
 
-        return response()->json([
-            'success' => 'Real database backup saved to Cloudinary!',
-            'download_url' => $result['secure_url'],
-            'public_id' => $result['public_id'],
-            'driver' => $driver
-        ]);
+            unlink($filePath);
 
-    } catch (\Exception $e) {
-        if (file_exists($filePath)) unlink($filePath);
-        return response()->json(['error' => 'Failed: ' . $e->getMessage()], 500);
-    }
-}
+            return response()->json([
+                'success' => true,
+                'url' => $result['secure_url']
+            ]);
 
-private function generateMySQLBackup()
-{
-    $sqlContent = "";
-    
-    // Get all table names
-    $tables = DB::select('SHOW TABLES');
-    $dbName = env('DB_DATABASE');
-    $firstTable = (array)$tables[0];
-    $propertyName = array_keys($firstTable)[0];
-    
-    foreach ($tables as $table) {
-        $tableArray = (array)$table;
-        $tableName = $tableArray[$propertyName];
-        
-        // Get table structure
-        $createTable = DB::select("SHOW CREATE TABLE `{$tableName}`");
-        $createTableArray = (array)$createTable[0];
-        $createStatement = $createTableArray['Create Table'];
-        
-        $sqlContent .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
-        $sqlContent .= $createStatement . ";\n\n";
-        
-        // Get all data from the table
-        $rows = DB::table($tableName)->get();
-        
-        if ($rows->count() > 0) {
-            foreach ($rows as $row) {
-                $columns = [];
-                $values = [];
-                
-                foreach ($row as $column => $value) {
-                    $columns[] = "`{$column}`";
-                    if (is_bool($value)) {
-    $values[] = $value ? '1' : '0';
-} elseif ($value === null) {
-    $values[] = 'NULL';
-} elseif ($value === '') {
-    $values[] = 'NULL';
-} else {
-    $values[] = "'" . addslashes($value) . "'";
-}
-                }
-                
-                $sqlContent .= "INSERT INTO `{$tableName}` (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ");\n";
-            }
-            $sqlContent .= "\n";
+        } catch (\Exception $e) {
+            if (file_exists($filePath)) unlink($filePath);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
-    return $sqlContent;
-}
 
-private function generatePostgreSQLBackup()
-{
-    $sqlContent = "";
-    
-    // Get all table names
-    $tables = DB::select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'");
-    
-    foreach ($tables as $table) {
-        $tableName = $table->table_name;
-        
-        // Drop table
-        $sqlContent .= "DROP TABLE IF EXISTS \"{$tableName}\" CASCADE;\n";
-        
-        // Get table structure using information_schema instead of pg_get_tabledef
-        $columns = DB::select("
-            SELECT 
-                column_name,
-                data_type,
-                is_nullable,
-                column_default,
-                character_maximum_length
-            FROM information_schema.columns 
-            WHERE table_schema = 'public' AND table_name = '{$tableName}'
-            ORDER BY ordinal_position
+    // 🔥 FULL SAFE ESCAPE
+    private function escapeValue($value)
+    {
+        if (is_bool($value)) {
+            return $value ? 'TRUE' : 'FALSE';
+        }
+
+        if ($value === null || $value === '') {
+            return 'NULL';
+        }
+
+        if (is_numeric($value)) {
+            return $value;
+        }
+
+        // escape \ és '
+        $escaped = str_replace(
+            ["\\", "'"],
+            ["\\\\", "''"],
+            $value
+        );
+
+        return "'{$escaped}'";
+    }
+
+    // 🔹 POSTGRES BACKUP
+    private function generatePostgreSQLBackup()
+    {
+        $sql = "";
+
+        $tables = DB::select("
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_type = 'BASE TABLE'
         ");
-        
-        // Build CREATE TABLE statement manually
-        $sqlContent .= "CREATE TABLE \"{$tableName}\" (\n";
-        
-        $columnDefinitions = [];
-        foreach ($columns as $column) {
-            $definition = "\"{$column->column_name}\" {$column->data_type}";
-            
-            // Add length for character types
-            if ($column->character_maximum_length) {
-                $definition .= "({$column->character_maximum_length})";
-            }
-            
-            // Handle nullable
-            if ($column->is_nullable === 'NO') {
-                $definition .= " NOT NULL";
-            }
-            
-            // Handle default values
-            if ($column->column_default) {
-                $definition .= " DEFAULT {$column->column_default}";
-            }
-            
-            $columnDefinitions[] = $definition;
-        }
-        
-        $sqlContent .= implode(",\n", $columnDefinitions) . "\n);\n\n";
-        
-        // Get all data from the table
-        $rows = DB::table($tableName)->get();
-        
-        if ($rows->count() > 0) {
+
+        foreach ($tables as $table) {
+            $tableName = $table->table_name;
+
+            $sql .= "TRUNCATE TABLE \"{$tableName}\" RESTART IDENTITY CASCADE;\n";
+
+            $rows = DB::table($tableName)->get();
+
             foreach ($rows as $row) {
                 $columns = [];
                 $values = [];
-                
+
                 foreach ($row as $column => $value) {
                     $columns[] = "\"{$column}\"";
-                    $values[] = $value === null ? 'NULL' : "'" . addslashes($value) . "'";
+                    $values[] = $this->escapeValue($value);
                 }
-                
-                $sqlContent .= "INSERT INTO \"{$tableName}\" (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ");\n";
+
+                $sql .= "INSERT INTO \"{$tableName}\" (" . implode(',', $columns) . ") VALUES (" . implode(',', $values) . ");\n";
             }
-            $sqlContent .= "\n";
+
+            $sql .= "\n";
         }
+
+        return $sql;
     }
-    
-    return $sqlContent;
-}
 
-public function restoreNewest(Request $request)
-{
-    if ($request->query('titkos') !== env('API_SECRET')) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Unauthorized'
-            ], 403);
-        }
+    // 🔹 RESTORE (100% SAFE)
+    public function restoreNewest(Request $request)
+    {
+        $this->checkAuth($request);
 
-    try {
-        // Initialize Cloudinary
-        $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
-        
-        // Get the newest backup
-        $result = $cloudinary->adminApi()->assets([
-            'type' => 'upload',
-            'prefix' => 'adatbazis',
-            'resource_type' => 'raw',
-            'max_results' => 1,
-            'sort_by' => [['created_at' => 'desc']]
-        ]);
+        try {
+            $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
 
-        if (empty($result['resources'])) {
-            return response()->json(['error' => 'No backups found'], 404);
-        }
+            $result = $cloudinary->adminApi()->assets([
+                'type' => 'upload',
+                'prefix' => 'adatbazis',
+                'resource_type' => 'raw',
+                'max_results' => 1,
+                'sort_by' => [['created_at' => 'desc']]
+            ]);
 
-        $backup = $result['resources'][0];
-        $downloadUrl = $backup['secure_url'];
+            if (empty($result['resources'])) {
+                return response()->json(['error' => 'No backup found'], 404);
+            }
 
-        // Download the SQL file
-        $fileContent = file_get_contents($downloadUrl);
-        
-        // Convert MySQL syntax to PostgreSQL
-        $fileContent = str_replace("`", "\"", $fileContent); // Backticks to double quotes
-        $fileContent = str_replace("25\\'", "25''", $fileContent); // Fix apostrophes
-        
-        // Execute only INSERT statements
-        $inserts = [];
-        preg_match_all('/INSERT INTO[^;]+;/', $fileContent, $inserts);
-        
-        $successful = 0;
-        $errors = [];
-        
-        foreach ($inserts[0] as $insert) {
+            $file = file_get_contents($result['resources'][0]['secure_url']);
+
+            // 🔥 teljes script futtatása egyben
+            DB::beginTransaction();
+
             try {
-                DB::statement($insert);
-                $successful++;
+                DB::unprepared($file);
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Database restored successfully'
+                ]);
+
             } catch (\Exception $e) {
-                // Ignore duplicate errors, log others
-                if (!str_contains($e->getMessage(), 'duplicate')) {
-                    $errors[] = $e->getMessage();
-                }
+                DB::rollBack();
+
+                return response()->json([
+                    'error' => 'Restore failed',
+                    'details' => $e->getMessage()
+                ], 500);
             }
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Restore failed: ' . $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'success' => 'Data added from backup!',
-            'inserts_successful' => $successful,
-            'total_inserts' => count($inserts[0]),
-            'errors' => $errors
-        ]);
-
-    } catch (\Exception $e) {
-        return response()->json(['error' => 'Restore failed: ' . $e->getMessage()], 500);
     }
-}
-
 }
