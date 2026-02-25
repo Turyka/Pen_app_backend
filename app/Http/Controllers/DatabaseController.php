@@ -241,22 +241,27 @@ public function restoreNewest()
         $backup = $result['resources'][0];
         $downloadUrl = $backup['secure_url'];
 
-        // Download the SQL file
+        // Download the SQL file with proper encoding detection
         $fileContent = file_get_contents($downloadUrl);
         
-        // Convert MySQL syntax to PostgreSQL (if needed)
+        // Fix encoding issues - ensure it's UTF-8
+        if (mb_detect_encoding($fileContent, 'UTF-8', true) === false) {
+            $fileContent = utf8_encode($fileContent);
+        }
+        
+        // Convert MySQL syntax to PostgreSQL
         $fileContent = str_replace("`", "\"", $fileContent); // Backticks to double quotes
         
-        // Fix apostrophes - THIS IS THE KEY FIX
-        // Replace all escaped apostrophes with double apostrophes for PostgreSQL
-        $fileContent = str_replace("\\'", "''", $fileContent);
+        // Fix apostrophes - handle them properly without breaking UTF-8
+        // We need to be careful with this to not break emojis
+        $fileContent = preg_replace('/(?<!\\\\)\\\\\'/', "''", $fileContent);
         
         // Drop all tables and recreate schema FIRST
         DB::statement('DROP SCHEMA public CASCADE');
         DB::statement('CREATE SCHEMA public');
         
-        // Split into individual statements
-        $statements = explode(';', $fileContent);
+        // Split into individual statements, being careful with UTF-8
+        $statements = preg_split('/;(?=(?:[^\']*\'[^\']*\')*[^\']*$)/', $fileContent);
         
         $executed = 0;
         $errors = [];
@@ -265,6 +270,9 @@ public function restoreNewest()
         foreach ($statements as $statement) {
             $statement = trim($statement);
             if (empty($statement)) continue;
+            
+            // Ensure the statement is valid UTF-8
+            $statement = mb_convert_encoding($statement, 'UTF-8', 'UTF-8');
             
             try {
                 DB::statement($statement);
@@ -275,16 +283,38 @@ public function restoreNewest()
                     $successful++;
                 }
             } catch (\Exception $e) {
-                // Ignore duplicate errors
-                if (!str_contains($e->getMessage(), 'duplicate') && 
-                    !str_contains($e->getMessage(), 'already exists')) {
-                    $errors[] = $e->getMessage() . "\nSQL: " . substr($statement, 0, 200);
-                } else {
+                // Check if it's a duplicate error
+                if (str_contains($e->getMessage(), 'duplicate') || 
+                    str_contains($e->getMessage(), 'already exists')) {
                     // Count duplicates as successful
                     if (strpos(strtoupper($statement), 'INSERT INTO') === 0) {
                         $successful++;
                     }
                     $executed++;
+                } 
+                // Check if it's an encoding error
+                elseif (str_contains($e->getMessage(), 'Malformed UTF-8')) {
+                    // Try to clean the statement
+                    $cleaned = $this->cleanUtf8String($statement);
+                    try {
+                        DB::statement($cleaned);
+                        $executed++;
+                        if (strpos(strtoupper($statement), 'INSERT INTO') === 0) {
+                            $successful++;
+                        }
+                    } catch (\Exception $e2) {
+                        $errors[] = [
+                            'type' => 'UTF-8 Error',
+                            'error' => $e->getMessage(),
+                            'statement' => substr($statement, 0, 200)
+                        ];
+                    }
+                } else {
+                    $errors[] = [
+                        'type' => 'SQL Error',
+                        'error' => $e->getMessage(),
+                        'statement' => substr($statement, 0, 200)
+                    ];
                 }
             }
         }
@@ -302,6 +332,20 @@ public function restoreNewest()
     } catch (\Exception $e) {
         return response()->json(['error' => 'Restore failed: ' . $e->getMessage()], 500);
     }
+}
+
+/**
+ * Helper function to clean UTF-8 strings
+ */
+private function cleanUtf8String($string)
+{
+    // Remove any invalid UTF-8 sequences
+    $string = mb_convert_encoding($string, 'UTF-8', 'UTF-8');
+    
+    // Remove any remaining invalid characters
+    $string = preg_replace('/[^\x{0009}\x{000a}\x{000d}\x{0020}-\x{D7FF}\x{E000}-\x{FFFD}]+/u', ' ', $string);
+    
+    return $string;
 }
 
 }
