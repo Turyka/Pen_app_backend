@@ -169,13 +169,17 @@ public function restoreNewest(Request $request)
 
         $file = file_get_contents($result['resources'][0]['secure_url']);
 
-        // 🔥 ESCAPE FIX
+        // 🔥 ESCAPE FIXEK
         $file = str_replace("\\'", "''", $file);
         $file = str_replace("\\\\", "\\\\\\\\", $file);
+
+        // 🔥 NULL FIX (empty string -> NULL)
         $file = preg_replace("/,\s*''/", ", NULL", $file);
+
+        // 🔥 BOOLEAN FIX
         $file = preg_replace("/'([01])'/", "$1", $file);
 
-        // 🔥 SEQUENCE FIX (EZ KELL!)
+        // 🔥 SEQUENCE FIX (nagyon fontos)
         $file = preg_replace(
             "/DEFAULT nextval\\('[^']+'::regclass\\)/",
             "",
@@ -184,9 +188,15 @@ public function restoreNewest(Request $request)
 
         DB::beginTransaction();
 
+        // 🔥 CONSTRAINT OFF
+        DB::statement("SET session_replication_role = replica;");
+
         DB::unprepared($file);
 
-        // 🔥 sequence reset
+        // 🔥 CONSTRAINT ON
+        DB::statement("SET session_replication_role = DEFAULT;");
+
+        // 🔥 SEQUENCE RESET
         $tables = DB::select("
             SELECT table_name 
             FROM information_schema.tables 
@@ -196,13 +206,17 @@ public function restoreNewest(Request $request)
         foreach ($tables as $table) {
             $tableName = $table->table_name;
 
-            DB::statement("
-                SELECT setval(
-                    pg_get_serial_sequence('\"{$tableName}\"', 'id'),
-                    COALESCE(MAX(id), 1),
-                    true
-                ) FROM \"{$tableName}\"
-            ");
+            try {
+                DB::statement("
+                    SELECT setval(
+                        pg_get_serial_sequence('\"{$tableName}\"', 'id'),
+                        COALESCE(MAX(id), 1),
+                        true
+                    ) FROM \"{$tableName}\"
+                ");
+            } catch (\Exception $e) {
+                // ignore ha nincs id
+            }
         }
 
         DB::commit();
