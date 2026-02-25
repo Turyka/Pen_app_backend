@@ -254,12 +254,7 @@ class DatabaseController extends Controller
             $fileContent = str_replace("`", "\"", $fileContent); // Backticks to double quotes
             
             // FIX: Better apostrophe handling for PostgreSQL
-            // First, temporarily mark escaped apostrophes
-            $fileContent = str_replace("\\'", "{{APOS}}", $fileContent);
-            // Then fix any remaining single apostrophes in strings
-            $fileContent = preg_replace("/(?<=[^\\\\])'/", "''", $fileContent);
-            // Restore the escaped apostrophes as double apostrophes
-            $fileContent = str_replace("{{APOS}}", "''", $fileContent);
+            $fileContent = str_replace("\\'", "''", $fileContent);
             
             // Get boolean columns info
             $booleanColumns = $this->getBooleanColumns();
@@ -267,40 +262,97 @@ class DatabaseController extends Controller
             // Split into individual statements
             $statements = explode(';', $fileContent);
             
+            // Separate CREATE TABLE and INSERT statements
+            $createTableStatements = [];
+            $insertStatements = [];
+            $otherStatements = [];
+            
+            foreach ($statements as $statement) {
+                $statement = trim($statement);
+                if (empty($statement)) continue;
+                
+                $upperStatement = strtoupper($statement);
+                
+                if (strpos($upperStatement, 'CREATE TABLE') === 0) {
+                    $createTableStatements[] = $statement;
+                } elseif (strpos($upperStatement, 'INSERT INTO') === 0) {
+                    // Process INSERT statements for boolean columns
+                    $statement = $this->processBooleanValues($statement, $booleanColumns);
+                    $insertStatements[] = $statement;
+                } else {
+                    $otherStatements[] = $statement;
+                }
+            }
+            
             $executed = 0;
             $errors = [];
             $successful = 0;
             
-            foreach ($statements as $statement) {
-                $statement = trim($statement);
-                if (!empty($statement)) {
-                    try {
-                        // Process statement for boolean columns if it's an INSERT
-                        if (strpos($statement, 'INSERT INTO') === 0) {
-                            $statement = $this->processBooleanValues($statement, $booleanColumns);
-                        }
+            // First, execute all CREATE TABLE statements
+            foreach ($createTableStatements as $statement) {
+                try {
+                    DB::statement($statement . ';');
+                    $executed++;
+                } catch (\Exception $e) {
+                    // Check if table already exists
+                    if (!str_contains($e->getMessage(), 'already exists')) {
+                        $errors[] = [
+                            'type' => 'CREATE TABLE',
+                            'statement' => substr($statement, 0, 100) . '...',
+                            'error' => $e->getMessage()
+                        ];
+                    } else {
+                        $executed++; // Count as executed if table exists
+                    }
+                }
+            }
+            
+            // Then, execute all INSERT statements
+            foreach ($insertStatements as $statement) {
+                try {
+                    DB::statement($statement . ';');
+                    $executed++;
+                    $successful++;
+                } catch (\Exception $e) {
+                    // Only log non-duplicate errors
+                    if (!str_contains($e->getMessage(), 'duplicate') && 
+                        !str_contains($e->getMessage(), 'already exists')) {
                         
-                        DB::statement($statement);
-                        $executed++;
-                        
-                        // Count successful INSERTs separately
-                        if (strpos($statement, 'INSERT INTO') === 0) {
-                            $successful++;
-                        }
-                    } catch (\Exception $e) {
-                        // Only log non-duplicate errors
-                        if (!str_contains($e->getMessage(), 'duplicate') && 
-                            !str_contains($e->getMessage(), 'already exists')) {
+                        // Special handling for "relation does not exist" errors
+                        if (str_contains($e->getMessage(), 'does not exist')) {
                             $errors[] = [
+                                'type' => 'INSERT - TABLE MISSING',
                                 'statement' => substr($statement, 0, 100) . '...',
                                 'error' => $e->getMessage()
                             ];
                         } else {
-                            // Still count duplicates as successful since data exists
-                            if (strpos($statement, 'INSERT INTO') === 0) {
-                                $successful++;
-                            }
+                            $errors[] = [
+                                'type' => 'INSERT',
+                                'statement' => substr($statement, 0, 100) . '...',
+                                'error' => $e->getMessage()
+                            ];
                         }
+                    } else {
+                        // Count duplicates as successful since data exists
+                        $successful++;
+                    }
+                }
+            }
+            
+            // Finally, execute other statements (ALTER TABLE, constraints, etc.)
+            foreach ($otherStatements as $statement) {
+                try {
+                    DB::statement($statement . ';');
+                    $executed++;
+                } catch (\Exception $e) {
+                    // Ignore errors for other statements unless they're critical
+                    if (!str_contains($e->getMessage(), 'already exists') &&
+                        !str_contains($e->getMessage(), 'duplicate')) {
+                        $errors[] = [
+                            'type' => 'OTHER',
+                            'statement' => substr($statement, 0, 100) . '...',
+                            'error' => $e->getMessage()
+                        ];
                     }
                 }
             }
@@ -310,6 +362,8 @@ class DatabaseController extends Controller
                 'backup_used' => $backup['public_id'],
                 'backup_date' => $backup['created_at'],
                 'statements_executed' => $executed,
+                'create_tables' => count($createTableStatements),
+                'inserts' => count($insertStatements),
                 'inserts_successful' => $successful,
                 'errors' => $errors
             ]);
