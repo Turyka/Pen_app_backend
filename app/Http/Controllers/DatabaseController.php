@@ -283,107 +283,175 @@ public function restoreNewest()
         $errors = [];
         $skippedTables = ['migrations']; // Skip migrations table to avoid conflicts
         
-        // Disable foreign key checks temporarily
-        DB::statement('SET session_replication_role = replica;');
+        // First, get the current order of inserts to handle foreign keys
+        // Process tables in order of dependencies (no foreign keys first)
+        $tableOrder = [
+            'users',           // No dependencies
+            'napi_login',      // No foreign keys
+            'kepfeltoltes',    // No foreign keys
+            'hirek',           // No foreign keys
+            'naptar',          // No foreign keys
+            'kozlemeny',       // Depends on users (user_id)
+            'facebook_posts',  // No foreign keys
+            'tiktok_posts',    // No foreign keys
+            'adat_eszkozok'    // No foreign keys
+        ];
         
+        // Group inserts by table
+        $insertsByTable = [];
         foreach ($inserts as $insert) {
-            // Skip migrations table
-            if (preg_match('/INSERT INTO "migrations"/', $insert)) {
-                continue;
-            }
-            
-            // Parse the INSERT statement
-            if (preg_match('/INSERT INTO "(\w+)"\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/', $insert, $matches)) {
+            if (preg_match('/INSERT INTO "(\w+)"/', $insert, $matches)) {
                 $tableName = $matches[1];
-                $columns = array_map(function($col) {
-                    return trim($col, '" ');
-                }, explode(',', $matches[2]));
-                
-                $values = explode(',', $matches[3]);
-                
-                // Process each value
-                $processedValues = [];
-                foreach ($values as $index => $value) {
-                    $value = trim($value);
-                    $columnName = $columns[$index] ?? '';
-                    
-                    // Handle boolean columns
-                    if (in_array($columnName, ['ertesites', 'kozlemenyErtesites', 'naptarErtesites'])) {
-                        if ($value === "''" || $value === 'NULL' || $value === '0') {
-                            $value = 'false';
-                        } elseif ($value === "'1'" || $value === '1') {
-                            $value = 'true';
-                        }
-                    }
-                    
-                    // Handle smallint columns
-                    if ($columnName === 'type') {
-                        if ($value === "''" || $value === 'NULL') {
-                            $value = '0';
-                        } elseif ($value === "'1'" || $value === '1' || $value === 'true') {
-                            $value = '1';
-                        } elseif ($value === "'0'" || $value === '0' || $value === 'false') {
-                            $value = '0';
-                        }
-                    }
-                    
-                    // Handle integer columns
-                    if (in_array($columnName, ['user_id', 'batch'])) {
-                        if ($value === "''" || $value === 'NULL') {
-                            $value = 'NULL';
-                        } elseif ($value === 'true') {
-                            $value = '1';
-                        } elseif ($value === 'false') {
-                            $value = '0';
-                        }
-                    }
-                    
-                    $processedValues[] = $value;
+                if (!in_array($tableName, $skippedTables)) {
+                    $insertsByTable[$tableName][] = $insert;
                 }
-                
-                // Rebuild the INSERT statement
-                $processedInsert = 'INSERT INTO "' . $tableName . '" (' . implode(', ', array_map(function($col) {
-                    return '"' . $col . '"';
-                }, $columns)) . ') VALUES (' . implode(', ', $processedValues) . ')';
-                
-                try {
-                    DB::statement($processedInsert);
-                    $successful++;
-                } catch (\Exception $e) {
-                    $errorMessage = $e->getMessage();
-                    
-                    // Handle specific errors
-                    if (str_contains($errorMessage, 'invalid input syntax for type boolean')) {
-                        // Try to fix boolean columns by replacing empty strings
-                        $fixedInsert = preg_replace("/'',/", "false,", $processedInsert);
-                        $fixedInsert = preg_replace("/,''\)/", ",false)", $fixedInsert);
+            }
+        }
+        
+        // Process tables in the correct order
+        foreach ($tableOrder as $tableName) {
+            if (isset($insertsByTable[$tableName])) {
+                foreach ($insertsByTable[$tableName] as $insert) {
+                    // Parse the INSERT statement
+                    if (preg_match('/INSERT INTO "(\w+)"\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/', $insert, $matches)) {
+                        $tableName = $matches[1];
+                        $columns = array_map(function($col) {
+                            return trim($col, '" ');
+                        }, explode(',', $matches[2]));
+                        
+                        $values = explode(',', $matches[3]);
+                        
+                        // Process each value
+                        $processedValues = [];
+                        $needsProcessing = false;
+                        
+                        foreach ($values as $index => $value) {
+                            $value = trim($value);
+                            $columnName = $columns[$index] ?? '';
+                            $originalValue = $value;
+                            
+                            // Handle boolean columns
+                            if (in_array($columnName, ['ertesites', 'kozlemenyErtesites', 'naptarErtesites'])) {
+                                if ($value === "''" || $value === 'NULL' || $value === '0') {
+                                    $value = 'false';
+                                    $needsProcessing = true;
+                                } elseif ($value === "'1'" || $value === '1') {
+                                    $value = 'true';
+                                    $needsProcessing = true;
+                                }
+                            }
+                            
+                            // Handle smallint columns
+                            if ($columnName === 'type') {
+                                if ($value === "''" || $value === 'NULL') {
+                                    $value = '0';
+                                    $needsProcessing = true;
+                                } elseif ($value === "'1'" || $value === '1' || $value === 'true') {
+                                    $value = '1';
+                                    $needsProcessing = true;
+                                } elseif ($value === "'0'" || $value === '0' || $value === 'false') {
+                                    $value = '0';
+                                    $needsProcessing = true;
+                                }
+                            }
+                            
+                            // Handle integer columns
+                            if (in_array($columnName, ['user_id', 'batch'])) {
+                                if ($value === "''" || $value === 'NULL') {
+                                    $value = 'NULL';
+                                    $needsProcessing = true;
+                                } elseif ($value === 'true') {
+                                    $value = '1';
+                                    $needsProcessing = true;
+                                } elseif ($value === 'false') {
+                                    $value = '0';
+                                    $needsProcessing = true;
+                                }
+                            }
+                            
+                            $processedValues[] = $value;
+                        }
+                        
+                        // Only rebuild if we made changes
+                        if ($needsProcessing) {
+                            $processedInsert = 'INSERT INTO "' . $tableName . '" (' . implode(', ', array_map(function($col) {
+                                return '"' . $col . '"';
+                            }, $columns)) . ') VALUES (' . implode(', ', $processedValues) . ')';
+                        } else {
+                            $processedInsert = $insert;
+                        }
                         
                         try {
-                            DB::statement($fixedInsert);
+                            DB::statement($processedInsert);
                             $successful++;
-                            continue;
-                        } catch (\Exception $e2) {
-                            $errors[] = $errorMessage . "\nStatement: " . substr($insert, 0, 200) . "...";
+                        } catch (\Exception $e) {
+                            $errorMessage = $e->getMessage();
+                            
+                            // Handle specific errors
+                            if (str_contains($errorMessage, 'invalid input syntax for type boolean')) {
+                                // Try to fix boolean columns by replacing empty strings
+                                $fixedInsert = preg_replace("/'',/", "false,", $processedInsert);
+                                $fixedInsert = preg_replace("/,''\)/", ",false)", $fixedInsert);
+                                
+                                try {
+                                    DB::statement($fixedInsert);
+                                    $successful++;
+                                    continue;
+                                } catch (\Exception $e2) {
+                                    $errors[] = $errorMessage . "\nStatement: " . substr($insert, 0, 200) . "...";
+                                }
+                            } elseif (str_contains($errorMessage, 'duplicate key value violates unique constraint')) {
+                                // Try to update instead of insert for duplicates
+                                if (preg_match('/INSERT INTO "(\w+)"\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/', $insert, $dupMatches)) {
+                                    $dupTable = $dupMatches[1];
+                                    $dupColumns = array_map(function($col) {
+                                        return trim($col, '" ');
+                                    }, explode(',', $dupMatches[2]));
+                                    $dupValues = explode(',', $dupMatches[3]);
+                                    
+                                    // Find the ID value
+                                    $idIndex = array_search('id', $dupColumns);
+                                    if ($idIndex !== false && isset($dupValues[$idIndex])) {
+                                        $id = trim($dupValues[$idIndex], "'");
+                                        
+                                        // Build UPDATE statement
+                                        $setParts = [];
+                                        foreach ($dupColumns as $idx => $col) {
+                                            if ($col !== 'id' && isset($dupValues[$idx])) {
+                                                $setParts[] = '"' . $col . '" = ' . $dupValues[$idx];
+                                            }
+                                        }
+                                        
+                                        if (!empty($setParts)) {
+                                            $updateSql = 'UPDATE "' . $dupTable . '" SET ' . implode(', ', $setParts) . ' WHERE "id" = ' . $id;
+                                            try {
+                                                DB::statement($updateSql);
+                                                $successful++;
+                                                continue;
+                                            } catch (\Exception $e2) {
+                                                // Update failed
+                                            }
+                                        }
+                                    }
+                                }
+                            } elseif (!str_contains($errorMessage, 'duplicate') && !str_contains($errorMessage, 'already exists')) {
+                                $errors[] = $errorMessage . "\nStatement: " . substr($insert, 0, 200) . "...";
+                            }
                         }
-                    } elseif (!str_contains($errorMessage, 'duplicate') && !str_contains($errorMessage, 'already exists')) {
-                        $errors[] = $errorMessage . "\nStatement: " . substr($insert, 0, 200) . "...";
-                    }
-                }
-            } else {
-                // If parsing fails, try to execute the original insert
-                try {
-                    DB::statement($insert);
-                    $successful++;
-                } catch (\Exception $e) {
-                    if (!str_contains($e->getMessage(), 'duplicate')) {
-                        $errors[] = $e->getMessage() . "\nStatement: " . substr($insert, 0, 200) . "...";
+                    } else {
+                        // If parsing fails, try to execute the original insert
+                        try {
+                            DB::statement($insert);
+                            $successful++;
+                        } catch (\Exception $e) {
+                            if (!str_contains($e->getMessage(), 'duplicate')) {
+                                $errors[] = $e->getMessage() . "\nStatement: " . substr($insert, 0, 200) . "...";
+                            }
+                        }
                     }
                 }
             }
         }
-
-        // Re-enable foreign key checks
-        DB::statement('SET session_replication_role = DEFAULT;');
 
         // Reset sequences for all tables
         $tables = ['napi_login', 'kozlemeny', 'kepfeltoltes', 'facebook_posts', 'tiktok_posts', 'hirek', 'naptar', 'adat_eszkozok', 'users'];
@@ -404,7 +472,6 @@ public function restoreNewest()
         ]);
 
     } catch (\Exception $e) {
-        DB::statement('SET session_replication_role = DEFAULT;');
         return response()->json(['error' => 'Restore failed: ' . $e->getMessage()], 500);
     }
 }
