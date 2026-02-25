@@ -244,25 +244,60 @@ public function restoreNewest()
         // Download the SQL file
         $fileContent = file_get_contents($downloadUrl);
         
-        // Convert MySQL syntax to PostgreSQL
-        $fileContent = str_replace("`", "\"", $fileContent); // Backticks to double quotes
-        $fileContent = str_replace("25\\'", "25''", $fileContent); // Fix apostrophes
-        
-        // Execute only INSERT statements
-        $inserts = [];
-        preg_match_all('/INSERT INTO[^;]+;/', $fileContent, $inserts);
+        // Split into individual statements
+        $statements = explode(";\n", $fileContent);
         
         $successful = 0;
+        $totalInserts = 0;
         $errors = [];
         
-        foreach ($inserts[0] as $insert) {
-            try {
-                DB::statement($insert);
-                $successful++;
-            } catch (\Exception $e) {
-                // Ignore duplicate errors, log others
-                if (!str_contains($e->getMessage(), 'duplicate')) {
-                    $errors[] = $e->getMessage();
+        foreach ($statements as $statement) {
+            $statement = trim($statement);
+            if (empty($statement)) continue;
+            
+            // Only process INSERT statements
+            if (stripos($statement, 'INSERT INTO') === 0) {
+                $totalInserts++;
+                
+                try {
+                    // Convert MySQL syntax to PostgreSQL
+                    
+                    // 1. Replace backticks with double quotes
+                    $statement = preg_replace('/`([^`]*)`/', '"$1"', $statement);
+                    
+                    // 2. Fix boolean values - convert empty strings to proper boolean
+                    $statement = preg_replace_callback(
+                        '/VALUES\s*\(([^)]+)\)/i',
+                        function($matches) {
+                            $values = $matches[1];
+                            // Split values but respect quoted strings
+                            $valueArray = $this->parseValues($values);
+                            
+                            foreach ($valueArray as &$value) {
+                                $value = trim($value);
+                                
+                                // Handle empty strings for boolean columns
+                                if ($value === "''") {
+                                    $value = 'NULL';
+                                }
+                                
+                                // Fix escaped apostrophes - MySQL uses \', PostgreSQL uses ''
+                                $value = str_replace("\\'", "''", $value);
+                            }
+                            
+                            return 'VALUES (' . implode(', ', $valueArray) . ')';
+                        },
+                        $statement
+                    );
+                    
+                    // 3. Remove any trailing semicolon for execution
+                    $statement = rtrim($statement, ';');
+                    
+                    DB::statement($statement);
+                    $successful++;
+                    
+                } catch (\Exception $e) {
+                    $errors[] = $e->getMessage() . "\nStatement: " . substr($statement, 0, 200) . "...";
                 }
             }
         }
@@ -270,13 +305,54 @@ public function restoreNewest()
         return response()->json([
             'success' => 'Data added from backup!',
             'inserts_successful' => $successful,
-            'total_inserts' => count($inserts[0]),
+            'total_inserts' => $totalInserts,
             'errors' => $errors
         ]);
 
     } catch (\Exception $e) {
         return response()->json(['error' => 'Restore failed: ' . $e->getMessage()], 500);
     }
+}
+
+/**
+ * Parse CSV values while respecting quoted strings
+ */
+private function parseValues($valuesString)
+{
+    $values = [];
+    $current = '';
+    $inQuotes = false;
+    $quoteChar = null;
+    $len = strlen($valuesString);
+    
+    for ($i = 0; $i < $len; $i++) {
+        $char = $valuesString[$i];
+        
+        if (($char === "'" || $char === '"') && ($i === 0 || $valuesString[$i-1] !== '\\')) {
+            if (!$inQuotes) {
+                $inQuotes = true;
+                $quoteChar = $char;
+                $current .= $char;
+            } elseif ($quoteChar === $char) {
+                $inQuotes = false;
+                $quoteChar = null;
+                $current .= $char;
+            } else {
+                $current .= $char;
+            }
+        } elseif ($char === ',' && !$inQuotes) {
+            $values[] = $current;
+            $current = '';
+        } else {
+            $current .= $char;
+        }
+    }
+    
+    if (!empty($current)) {
+        $values[] = $current;
+    }
+    
+    return $values;
 }
 
 }
