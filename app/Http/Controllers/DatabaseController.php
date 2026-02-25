@@ -148,52 +148,69 @@ class DatabaseController extends Controller
     }
 
     // 🔹 RESTORE (100% SAFE)
-    public function restoreNewest(Request $request)
-    {
-        $this->checkAuth($request);
+   public function restoreNewest(Request $request)
+{
+    $this->checkAuth($request);
+
+    try {
+        $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
+
+        $result = $cloudinary->adminApi()->assets([
+            'type' => 'upload',
+            'prefix' => 'adatbazis',
+            'resource_type' => 'raw',
+            'max_results' => 1,
+            'sort_by' => [['created_at' => 'desc']]
+        ]);
+
+        if (empty($result['resources'])) {
+            return response()->json(['error' => 'No backup found'], 404);
+        }
+
+        $file = file_get_contents($result['resources'][0]['secure_url']);
+
+        // 🔥🔥🔥 KRITIKUS FIXEK 🔥🔥🔥
+
+        // 1. MySQL escape -> PostgreSQL
+        $file = str_replace("\\'", "''", $file);
+
+        // 2. Backslash dupla (pl. pathok miatt)
+        $file = str_replace("\\\\", "\\\\\\\\", $file);
+
+        // 3. üres string -> NULL
+        $file = preg_replace("/,\s*''/", ", NULL", $file);
+
+        // 4. boolean string fix
+        $file = preg_replace("/'([01])'/", "$1", $file);
+
+        // 5. UTF-8 biztosítás
+        $file = mb_convert_encoding($file, 'UTF-8', 'UTF-8');
+
+        DB::beginTransaction();
 
         try {
-            $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
+            DB::unprepared($file);
 
-            $result = $cloudinary->adminApi()->assets([
-                'type' => 'upload',
-                'prefix' => 'adatbazis',
-                'resource_type' => 'raw',
-                'max_results' => 1,
-                'sort_by' => [['created_at' => 'desc']]
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Database restored successfully'
             ]);
 
-            if (empty($result['resources'])) {
-                return response()->json(['error' => 'No backup found'], 404);
-            }
-
-            $file = file_get_contents($result['resources'][0]['secure_url']);
-
-            // 🔥 teljes script futtatása egyben
-            DB::beginTransaction();
-
-            try {
-                DB::unprepared($file);
-                DB::commit();
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Database restored successfully'
-                ]);
-
-            } catch (\Exception $e) {
-                DB::rollBack();
-
-                return response()->json([
-                    'error' => 'Restore failed',
-                    'details' => $e->getMessage()
-                ], 500);
-            }
-
         } catch (\Exception $e) {
+            DB::rollBack();
+
             return response()->json([
-                'error' => 'Restore failed: ' . $e->getMessage()
+                'error' => 'Restore failed',
+                'details' => $e->getMessage()
             ], 500);
         }
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Restore failed: ' . $e->getMessage()
+        ], 500);
     }
+}
 }
