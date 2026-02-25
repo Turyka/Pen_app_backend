@@ -241,91 +241,42 @@ public function restoreNewest()
         $backup = $result['resources'][0];
         $downloadUrl = $backup['secure_url'];
 
-        // Download the SQL file as binary
+        // Download the SQL file
         $fileContent = file_get_contents($downloadUrl);
         
-        // Save to temp file
-        $tempFile = storage_path('app/restore_' . time() . '.sql');
-        file_put_contents($tempFile, $fileContent);
+        // Convert MySQL syntax to PostgreSQL
+        $fileContent = str_replace("`", "\"", $fileContent); // Backticks to double quotes
+        $fileContent = str_replace("25\\'", "25''", $fileContent); // Fix apostrophes
         
-        // Drop all tables and recreate schema
-        DB::statement('DROP SCHEMA public CASCADE');
-        DB::statement('CREATE SCHEMA public');
+        // Execute only INSERT statements
+        $inserts = [];
+        preg_match_all('/INSERT INTO[^;]+;/', $fileContent, $inserts);
         
-        // Use PostgreSQL's native COPY command
-        $command = sprintf(
-            'PGPASSWORD=%s psql -h %s -U %s -d %s -f %s 2>&1',
-            escapeshellarg(env('DB_PASSWORD')),
-            escapeshellarg(env('DB_HOST')),
-            escapeshellarg(env('DB_USERNAME')),
-            escapeshellarg(env('DB_DATABASE')),
-            escapeshellarg($tempFile)
-        );
+        $successful = 0;
+        $errors = [];
         
-        exec($command, $output, $returnCode);
-        
-        unlink($tempFile);
-        
-        if ($returnCode !== 0) {
-            // If psql fails, try the COPY command approach
-            return $this->restoreWithCopy($backup, $fileContent);
-        }
-
-        return response()->json([
-            'success' => 'Database fully restored from backup!',
-            'backup_used' => $backup['public_id'],
-            'backup_date' => $backup['created_at']
-        ]);
-
-    } catch (\Exception $e) {
-        if (isset($tempFile) && file_exists($tempFile)) {
-            unlink($tempFile);
-        }
-        return response()->json(['error' => 'Restore failed: ' . $e->getMessage()], 500);
-    }
-}
-
-private function restoreWithCopy($backup, $fileContent)
-{
-    // Extract CREATE TABLE and INSERT statements separately
-    $tables = [];
-    
-    // Parse the SQL file
-    $lines = explode("\n", $fileContent);
-    $currentTable = null;
-    
-    foreach ($lines as $line) {
-        $line = trim($line);
-        
-        // Check for CREATE TABLE
-        if (preg_match('/CREATE TABLE "([^"]+)"/', $line, $matches)) {
-            $currentTable = $matches[1];
-            // Execute CREATE TABLE
+        foreach ($inserts[0] as $insert) {
             try {
-                DB::statement($line);
+                DB::statement($insert);
+                $successful++;
             } catch (\Exception $e) {
-                // Table might already exist
-            }
-        }
-        
-        // Check for INSERT
-        if (preg_match('/INSERT INTO "([^"]+)"/', $line, $matches)) {
-            $table = $matches[1];
-            try {
-                DB::statement($line);
-            } catch (\Exception $e) {
-                // Handle duplicate errors
+                // Ignore duplicate errors, log others
                 if (!str_contains($e->getMessage(), 'duplicate')) {
-                    // Log other errors
+                    $errors[] = $e->getMessage();
                 }
             }
         }
+
+        return response()->json([
+            'success' => 'Data added from backup!',
+            'inserts_successful' => $successful,
+            'total_inserts' => count($inserts[0]),
+            'errors' => $errors
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Restore failed: ' . $e->getMessage()], 500);
     }
-    
-    return response()->json([
-        'success' => 'Database restored with COPY method!',
-        'backup_used' => $backup['public_id']
-    ]);
 }
 
 }
