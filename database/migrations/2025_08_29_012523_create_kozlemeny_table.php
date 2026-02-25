@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('title');
             $table->text('description');
             $table->tinyInteger('type');
-            $table->boolean('ertesites');
+            $table->boolean('ertesites')->default(0);
             $table->string('created');
             $table->timestamps();
         });
