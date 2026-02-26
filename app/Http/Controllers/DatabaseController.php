@@ -72,7 +72,10 @@ class DatabaseController extends Controller
     /**
      * Restore newest backup from Cloudinary
      */
-    public function restoreNewest()
+    /**
+ * Restore newest backup from Cloudinary
+ */
+public function restoreNewest()
 {
     try {
         // Get newest backup from Cloudinary
@@ -106,57 +109,58 @@ class DatabaseController extends Controller
         DB::beginTransaction();
         
         try {
-            // Disable triggers temporarily to allow ID insertion
-            DB::statement('SET session_replication_role = replica;');
+            // Delete data in correct order (child tables first, then parent tables)
+            $tableOrder = [
+                'napi_login',
+                'sessions',
+                'password_resets',
+                'adat_eszkozok',
+                'tiktok_posts',
+                'facebook_posts',
+                'kepfeltoltes',
+                'postok',
+                'kozlemeny',
+                'naptar',
+                'hirek',
+                'users'
+            ];
             
-            // Clear existing data (except migrations table)
-            foreach ($backupData['data'] as $table => $rows) {
-                if ($table !== 'migrations') {
+            // Clear existing data in reverse order (child tables first)
+            foreach (array_reverse($tableOrder) as $table) {
+                if (isset($backupData['data'][$table])) {
                     DB::table($table)->truncate();
                 }
             }
             
-            // Insert backup data with specific IDs
-            foreach ($backupData['data'] as $table => $rows) {
-                foreach ($rows as $row) {
-                    $rowArray = (array)$row;
-                    
-                    // Handle users table password if needed
-                    if ($table === 'users' && isset($rowArray['password'])) {
-                        // Keep the hashed password as is
-                    }
-                    
-                    DB::table($table)->insert($rowArray);
-                }
-            }
-            
-            // Reset sequences for all tables
-            foreach ($backupData['data'] as $table => $rows) {
-                if ($table !== 'migrations' && !empty($rows)) {
-                    // Get the maximum ID for this table
-                    $maxId = DB::table($table)->max('id');
-                    if ($maxId) {
-                        // Reset the sequence to the max ID
-                        DB::statement("SELECT setval('{$table}_id_seq', {$maxId});");
+            // Insert backup data WITHOUT specifying IDs (let them auto-generate)
+            foreach ($tableOrder as $table) {
+                if (isset($backupData['data'][$table])) {
+                    foreach ($backupData['data'][$table] as $row) {
+                        $rowArray = (array)$row;
+                        
+                        // Remove ID if it exists (let database generate new ones)
+                        unset($rowArray['id']);
+                        
+                        // For users table, keep password as is
+                        if ($table === 'users' && isset($rowArray['password'])) {
+                            // Password stays as is
+                        }
+                        
+                        DB::table($table)->insert($rowArray);
                     }
                 }
             }
-            
-            // Re-enable triggers
-            DB::statement('SET session_replication_role = DEFAULT;');
             
             DB::commit();
             
             return response()->json([
                 'success' => true,
-                'message' => 'Database restored from: ' . $backup['public_id'],
+                'message' => 'Database restored successfully!',
                 'backup_date' => $backupData['created_at'] ?? 'unknown'
             ]);
             
         } catch (\Exception $e) {
             DB::rollBack();
-            // Make sure to re-enable triggers even on error
-            DB::statement('SET session_replication_role = DEFAULT;');
             throw $e;
         }
         
@@ -168,6 +172,8 @@ class DatabaseController extends Controller
         ], 500);
     }
 }
+            
+            // Reset sequences for 
     
     /**
      * Migrate refresh - wipe all tables and run migrations+seeds
