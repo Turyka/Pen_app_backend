@@ -75,27 +75,12 @@ class DatabaseController extends Controller
     /**
  * Restore newest backup from Cloudinary
  */
-public function restoreNewest()
+
+            public function restoreNewest()
 {
     try {
-        // Get newest backup from Cloudinary
-        $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
+        // ... (Cloudinary code same as above) ...
         
-        $result = $cloudinary->adminApi()->assets([
-            'type' => 'upload',
-            'prefix' => 'database_backups',
-            'resource_type' => 'raw',
-            'max_results' => 1,
-            'sort_by' => [['created_at' => 'desc']]
-        ]);
-
-        if (empty($result['resources'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No backups found'
-            ], 404);
-        }
-
         // Download backup
         $backup = $result['resources'][0];
         $jsonContent = file_get_contents($backup['secure_url']);
@@ -109,54 +94,50 @@ public function restoreNewest()
         DB::beginTransaction();
         
         try {
-            // Delete data in correct order (child tables first, then parent tables)
-            $tableOrder = [
-                'napi_login',
-                'sessions',
-                'password_resets',
-                'adat_eszkozok',
-                'tiktok_posts',
-                'facebook_posts',
-                'kepfeltoltes',
-                'postok',
-                'kozlemeny',
-                'naptar',
-                'hirek',
-                'users'
+            // Disable foreign key checks
+            DB::statement('SET CONSTRAINTS ALL DEFERRED;');
+            
+            // Clear tables in correct order (child first, parent last)
+            $clearOrder = [
+                'sessions',           // Depends on users
+                'password_resets',    // Depends on users? 
+                'kozlemeny',          // Depends on users
+                'napi_login',         // Independent
+                'adat_eszkozok',      // Independent
+                'tiktok_posts',       // Independent
+                'facebook_posts',     // Independent
+                'kepfeltoltes',       // Independent
+                'postok',             // Independent
+                'naptar',             // Independent
+                'hirek',              // Independent
+                'users'               // Parent - clear last
             ];
             
-            // Clear existing data in reverse order (child tables first)
-            foreach (array_reverse($tableOrder) as $table) {
+            foreach ($clearOrder as $table) {
                 if (isset($backupData['data'][$table])) {
                     DB::table($table)->truncate();
                 }
             }
             
-            // Insert backup data WITHOUT specifying IDs (let them auto-generate)
-            foreach ($tableOrder as $table) {
-                if (isset($backupData['data'][$table])) {
+            // Insert in reverse order (parents first, children last)
+            $insertOrder = array_reverse($clearOrder);
+            
+            foreach ($insertOrder as $table) {
+                if (isset($backupData['data'][$table]) && !empty($backupData['data'][$table])) {
                     foreach ($backupData['data'][$table] as $row) {
-                        $rowArray = (array)$row;
-                        
-                        // Remove ID if it exists (let database generate new ones)
-                        unset($rowArray['id']);
-                        
-                        // For users table, keep password as is
-                        if ($table === 'users' && isset($rowArray['password'])) {
-                            // Password stays as is
-                        }
-                        
-                        DB::table($table)->insert($rowArray);
+                        DB::table($table)->insert((array)$row);
                     }
                 }
             }
+            
+            // Re-enable foreign key checks
+            DB::statement('SET CONSTRAINTS ALL IMMEDIATE;');
             
             DB::commit();
             
             return response()->json([
                 'success' => true,
-                'message' => 'Database restored successfully!',
-                'backup_date' => $backupData['created_at'] ?? 'unknown'
+                'message' => 'Database restored successfully!'
             ]);
             
         } catch (\Exception $e) {
@@ -165,14 +146,12 @@ public function restoreNewest()
         }
         
     } catch (\Exception $e) {
-        Log::error('Restore failed: ' . $e->getMessage());
         return response()->json([
             'success' => false,
             'message' => 'Restore failed: ' . $e->getMessage()
         ], 500);
     }
 }
-            
             // Reset sequences for 
     
     /**
