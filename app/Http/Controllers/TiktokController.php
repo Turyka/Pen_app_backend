@@ -9,29 +9,37 @@ use Illuminate\Support\Str;
 
 class TiktokController extends Controller
 {
-    public function store(Request $request)
+
+public function store(Request $request)
 {
+    // ── API key check ──────────────────────────────────────
+    $apiKey = $request->header('X-API-KEY');
+    if (!$apiKey || !hash_equals(env('SCRAPER_API_KEY', 'dQw4w9WgXcQ'), $apiKey)) {
+        return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
+    // ── Validate input ─────────────────────────────────────
     $validated = $request->validate([
-        'title' => 'required|string|max:255',
-        'url' => 'required|url|max:255',
+        'title'     => 'required|string|max:500',
+        'url'       => 'required|url|max:500',
         'image_url' => 'nullable|url',
     ]);
 
-    // Find by URL
+    // ── Find by URL ────────────────────────────────────────
     $post = TiktokPost::where('url', $validated['url'])->first();
 
     // Case 1: URL does not exist → create
     if (!$post) {
         $post = TiktokPost::create([
-            'title' => $validated['title'],
-            'url' => $validated['url'],
+            'title'     => $validated['title'],
+            'url'       => $validated['url'],
             'image_url' => $validated['image_url'] ?? null,
         ]);
 
         return response()->json([
             'success' => true,
-            'action' => 'created',
-            'id' => $post->id,
+            'action'  => 'created',
+            'id'      => $post->id,
         ], 201);
     }
 
@@ -46,16 +54,16 @@ class TiktokController extends Controller
 
         return response()->json([
             'success' => true,
-            'action' => 'updated',
-            'id' => $post->id,
+            'action'  => 'updated',
+            'id'      => $post->id,
         ], 200);
     }
 
-    // Case 3: URL exists & nothing changed → do nothing
+    // Case 3: nothing changed → skip
     return response()->json([
         'success' => true,
-        'action' => 'no_change',
-        'id' => $post->id,
+        'action'  => 'no_change',
+        'id'      => $post->id,
     ], 200);
 }
 
