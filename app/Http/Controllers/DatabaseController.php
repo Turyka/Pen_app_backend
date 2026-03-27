@@ -95,7 +95,7 @@ class DatabaseController extends Controller
                 'type' => 'upload',
                 'prefix' => 'database_backups',
                 'resource_type' => 'raw',
-                'max_results' => 10,
+                'max_results' => 500,
             ]);
 
             if (empty($result['resources'])) {
