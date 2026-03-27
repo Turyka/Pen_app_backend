@@ -96,7 +96,7 @@ class DatabaseController extends Controller
                 'prefix' => 'database_backups',
                 'resource_type' => 'raw',
                 'max_results' => 10,
-                'sort_by' => [['created_at' => 'desc']]
+                'sort_by' => [['created_at' => 'asc']]
             ]);
 
             if (empty($result['resources'])) {
