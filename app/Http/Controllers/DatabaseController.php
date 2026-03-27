@@ -96,7 +96,6 @@ class DatabaseController extends Controller
                 'prefix' => 'database_backups',
                 'resource_type' => 'raw',
                 'max_results' => 10,
-                'sort_by' => [['created_at' => 'asc']]
             ]);
 
             if (empty($result['resources'])) {
@@ -105,9 +104,10 @@ class DatabaseController extends Controller
                     'message' => 'No backups found in Cloudinary'
                 ], 404);
             }
-
+            $resources = $result['resources'];
+            usort($resources, fn($a, $b) => strtotime($b['created_at']) - strtotime($a['created_at']));
             // Get the newest backup (first in the list)
-            $backup = $result['resources'][0];
+            $backup = $resources[0];
             $downloadUrl = $backup['secure_url'];
             $backupDate = $backup['created_at'];
             $backupName = $backup['public_id'];
