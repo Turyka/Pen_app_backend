@@ -193,11 +193,7 @@ public function naptarAPI(Request $request)
     // 5️⃣ Verify HMAC signature
     $expected = hash_hmac('sha256', $timestamp, env('API_TOKEN'));
     if (!hash_equals($expected, $signature)) {
-        return response()->json([
-            'error' => 'Bad signature',
-            'expected' => $expected,
-            'received' => $signature
-        ], 401);
+        return response()->json(['error' => 'Bad signature'], 401);
     }
 
     // 6️⃣ Fetch events

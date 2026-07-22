@@ -147,11 +147,7 @@ public function facebookPostAPI(Request $request)
     $expected = hash_hmac('sha256', $timestamp, env('API_TOKEN'));
 
     if (!hash_equals($expected, $signature)) {
-        return response()->json([
-            'error' => 'Bad signature',
-            'expected' => $expected, // TEMP
-            'received' => $signature // TEMP
-        ], 401);
+
     }
 
     return FacebookPost::orderByDesc('updated_at')
