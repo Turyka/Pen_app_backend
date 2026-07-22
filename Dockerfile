@@ -1,6 +1,6 @@
 FROM php:8.2-fpm
 
-# Install system dependencies (pre-built, no compilation needed)
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     wget \
@@ -19,7 +19,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     git \
     nginx \
-    supervisor \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -46,10 +45,9 @@ RUN rm -f /etc/nginx/sites-enabled/default
 COPY conf/nginx/nginx-site.conf /etc/nginx/sites-available/app.conf
 RUN ln -s /etc/nginx/sites-available/app.conf /etc/nginx/sites-enabled/app.conf
 
-# Supervisor config
-RUN printf '[program:php-fpm]\ncommand=php-fpm8.2 --nodaemonize\nautostart=true\nautorestart=true\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\n' > /etc/supervisor/conf.d/php-fpm.conf
-
-RUN printf '[program:nginx]\ncommand=nginx -g "daemon off;"\nautostart=true\nautorestart=true\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\n' > /etc/supervisor/conf.d/nginx.conf
+# Startup script
+COPY scripts/start.sh /start.sh
+RUN chmod +x /start.sh
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
@@ -58,4 +56,4 @@ RUN chown -R www-data:www-data /var/www/html \
 
 EXPOSE 80
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+CMD ["/start.sh"]
