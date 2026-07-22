@@ -19,7 +19,7 @@ RUN apk add --no-cache \
     git \
     nginx \
     supervisor \
-    && pip3 install selenium
+    && pip3 install --break-system-packages selenium
 
 # Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
