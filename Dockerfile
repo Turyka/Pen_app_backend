@@ -1,42 +1,64 @@
-FROM richarvey/nginx-php-fpm:3.1.6
+FROM php:8.2-fpm-alpine
 
-# Install CA certificates
-RUN apk update && apk add ca-certificates && update-ca-certificates
-ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-
-# Install Chrome + Python for Facebook scraper
+# Install system dependencies
 RUN apk add --no-cache \
+    ca-certificates \
     wget \
     gnupg \
     python3 \
     py3-pip \
     chromium \
     chromium-chromedriver \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    oniguruma-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    git \
+    nginx \
+    supervisor \
     && pip3 install selenium
 
-# Set Chrome options
+# Install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
 ENV CHROME_BIN=/usr/bin/chromium-browser
 ENV CHROME_DRIVER=/usr/bin/chromedriver
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Allow composer to run as root
-ENV COMPOSER_ALLOW_SUPERUSER 1
+WORKDIR /var/www/html
+
+# Copy composer files first for caching
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
 # Copy application files
 COPY . .
+RUN composer dump-autoload --optimize --no-dev
 
-# Install composer dependencies inside the container
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Nginx config
+RUN rm -f /etc/nginx/http.d/default.conf
+COPY conf/nginx/nginx-site.conf /etc/nginx/http.d/default.conf
 
-# Image config
-ENV WEBROOT /var/www/html/public
-ENV PHP_ERRORS_STDERR 1
-ENV REAL_IP_HEADER 1
+# Configure PHP-FPM to use Unix socket
+RUN printf '[www]\nuser = nginx\ngroup = nginx\nlisten = /var/run/php-fpm.sock\nlisten.owner = nginx\nlisten.group = nginx\nlisten.mode = 0660\npm = dynamic\npm.max_children = 5\npm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\n' > /usr/local/etc/php-fpm.d/www.conf
 
-# Laravel config
-ENV APP_ENV production
-ENV APP_DEBUG false
-ENV LOG_CHANNEL stderr
+# Supervisor config
+RUN printf '[program:php-fpm]\ncommand=php-fpm\nautostart=true\nautorestart=true\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\n' > /etc/supervisor.d/php-fpm.conf
+
+RUN printf '[program:nginx]\ncommand=nginx -g "daemon off;"\nautostart=true\nautorestart=true\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\n' > /etc/supervisor.d/nginx.conf
+
+# Set permissions
+RUN chown -R nginx:nginx /var/www/html \
+    && chmod -R 755 /var/www/html/storage \
+    && chmod -R 755 /var/www/html/bootstrap/cache
 
 EXPOSE 80
 
-CMD ["/start.sh"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
