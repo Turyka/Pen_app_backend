@@ -46,9 +46,6 @@ RUN rm -f /etc/nginx/sites-enabled/default
 COPY conf/nginx/nginx-site.conf /etc/nginx/sites-available/app.conf
 RUN ln -s /etc/nginx/sites-available/app.conf /etc/nginx/sites-enabled/app.conf
 
-# PHP-FPM pool config (use TCP 127.0.0.1:9000 instead of socket)
-RUN sed -i 's|listen = /run/php/php8.2-fpm.sock|listen = 127.0.0.1:9000|g' /etc/php/8.2/fpm/pool.d/www.conf
-
 # Supervisor config
 RUN printf '[program:php-fpm]\ncommand=php-fpm8.2 --nodaemonize\nautostart=true\nautorestart=true\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\n' > /etc/supervisor/conf.d/php-fpm.conf
 
