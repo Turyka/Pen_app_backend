@@ -1,34 +1,33 @@
-FROM php:8.2-fpm-alpine
+FROM php:8.2-fpm
 
-# Install system dependencies
-RUN apk add --no-cache \
+# Install system dependencies (pre-built, no compilation needed)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     wget \
     gnupg \
     python3 \
-    py3-pip \
+    python3-pip \
     chromium \
-    chromium-chromedriver \
+    chromium-driver \
     libpng-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    oniguruma-dev \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
+    libonig-dev \
     libxml2-dev \
+    libzip-dev \
     zip \
     unzip \
     git \
     nginx \
     supervisor \
-    && pip3 install --break-system-packages selenium
-
-# Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV CHROME_BIN=/usr/bin/chromium
 ENV CHROME_DRIVER=/usr/bin/chromedriver
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
@@ -43,22 +42,23 @@ COPY . .
 RUN composer dump-autoload --optimize --no-dev
 
 # Nginx config
-RUN rm -f /etc/nginx/http.d/default.conf
-COPY conf/nginx/nginx-site.conf /etc/nginx/http.d/default.conf
+RUN rm -f /etc/nginx/sites-enabled/default
+COPY conf/nginx/nginx-site.conf /etc/nginx/sites-available/app.conf
+RUN ln -s /etc/nginx/sites-available/app.conf /etc/nginx/sites-enabled/app.conf
 
-# Configure PHP-FPM to use Unix socket
-RUN printf '[www]\nuser = nginx\ngroup = nginx\nlisten = /var/run/php-fpm.sock\nlisten.owner = nginx\nlisten.group = nginx\nlisten.mode = 0660\npm = dynamic\npm.max_children = 5\npm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\n' > /usr/local/etc/php-fpm.d/www.conf
+# PHP-FPM pool config (use TCP 127.0.0.1:9000 instead of socket)
+RUN sed -i 's|listen = /run/php/php8.2-fpm.sock|listen = 127.0.0.1:9000|g' /etc/php/8.2/fpm/pool.d/www.conf
 
 # Supervisor config
-RUN printf '[program:php-fpm]\ncommand=php-fpm\nautostart=true\nautorestart=true\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\n' > /etc/supervisor.d/php-fpm.conf
+RUN printf '[program:php-fpm]\ncommand=php-fpm8.2 --nodaemonize\nautostart=true\nautorestart=true\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\n' > /etc/supervisor/conf.d/php-fpm.conf
 
-RUN printf '[program:nginx]\ncommand=nginx -g "daemon off;"\nautostart=true\nautorestart=true\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\n' > /etc/supervisor.d/nginx.conf
+RUN printf '[program:nginx]\ncommand=nginx -g "daemon off;"\nautostart=true\nautorestart=true\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\n' > /etc/supervisor/conf.d/nginx.conf
 
 # Set permissions
-RUN chown -R nginx:nginx /var/www/html \
+RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
 EXPOSE 80
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
