@@ -46,16 +46,35 @@ class HirController extends Controller
 
     public function apiIndex(Request $request)
     {
-        if ($request->query('titkos') !== env('API_SECRET')) {
-        return response()->json(['error' => 'Unauthorized'], 401);
+        $auth = $request->header('Authorization');
+        $timestamp = $request->header('X-Timestamp');
+        $signature = $request->header('X-Signature');
+
+        if (!$auth || !$timestamp || !$signature) {
+            return response()->json(['error' => 'Missing headers'], 401);
         }
 
-        // Get the latest 10 news
+        if (!str_starts_with($auth, 'Bearer ')) {
+            return response()->json(['error' => 'Bad auth format'], 401);
+        }
+
+        if (!hash_equals(env('API_TOKEN'), substr($auth, 7))) {
+            return response()->json(['error' => 'Bad token'], 401);
+        }
+
+        if (abs(time() - (int)$timestamp) > 300) {
+            return response()->json(['error' => 'Expired'], 401);
+        }
+
+        $expected = hash_hmac('sha256', $timestamp, env('API_TOKEN'));
+        if (!hash_equals($expected, $signature)) {
+            return response()->json(['error' => 'Bad signature'], 401);
+        }
+
         $hirek = Hir::orderBy('id', 'desc')
                     ->take(10)
                     ->get();
 
-        // Return only the data array
         return response()->json([
             'data' => $hirek
         ]);
